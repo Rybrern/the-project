@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Wallpaper App</string>
+	<string>Fondos HD</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -26,6 +26,13 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<!-- ID de app de AdMob. Este es el ID de PRUEBA oficial de Google:
+	     https://developers.google.com/admob/ios/test-ads
+	     Reemplazar por el ID real (AdMob > Apps > ID de la app) antes de publicar. -->
+	<key>GADApplicationIdentifier</key>
+	<string>cca-app-pub-8003573930637347~5998796044</string>
+	<key>NSUserTrackingUsageDescription</key>
+	<string>Usamos este permiso para mostrarte anuncios más relevantes.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

@@ -1,1 +1,54 @@
-texto pensado para subir al proyecto
+TEXTOS PARA GOOGLE PLAY / APP STORE
+=====================================
+
+Nombre de la app
+-----------------
+Fondos HD: Wallpapers 4K
+
+Subtítulo / frase corta (máx. 30 caracteres, Google Play)
+-----------------------------------------------------------
+Wallpapers 4K gratis
+
+Descripción corta (máx. 80 caracteres, Google Play)
+------------------------------------------------------
+Miles de fondos de pantalla HD y 4K. Descargá, aplicá y compartí gratis.
+
+Descripción larga
+-------------------
+Fondos HD es tu galería de wallpapers de alta calidad, lista para renovar la
+pantalla de tu celular en segundos.
+
+✔ Miles de fondos en HD y 4K, actualizados todo el tiempo
+✔ Categorías para todos los gustos: naturaleza, abstracto, minimalista,
+  espacio, arquitectura, animales, arte y mucho más
+✔ Aplicá el fondo directo a tu pantalla de inicio, de bloqueo o ambas
+✔ Guardá tus favoritos para encontrarlos cuando quieras
+✔ Descargá en calidad original y compartilos con tus amigos
+✔ Interfaz simple, rápida y sin complicaciones
+
+Encontrá el fondo perfecto para tu estilo y llevá tu pantalla a otro nivel.
+¡Descargala gratis y probala ahora!
+
+Palabras clave sugeridas (App Store)
+---------------------------------------
+wallpapers, fondos de pantalla, fondos hd, fondos 4k, wallpapers hd,
+fondos gratis, imagenes, fondos animados, backgrounds, lock screen
+
+Notas para las capturas de pantalla
+--------------------------------------
+1. Catálogo principal mostrando la grilla de fondos variados
+2. Categorías (pantalla de categorías con los emojis/nombres)
+3. Detalle de un fondo con los botones de compartir/descargar/aplicar
+4. Favoritos guardados
+5. Onboarding (primera pantalla, "Miles de fondos en HD")
+
+Notas técnicas antes de publicar
+------------------------------------
+- Reemplazar los IDs de AdMob de PRUEBA por los reales:
+  * android/app/src/main/AndroidManifest.xml (com.google.android.gms.ads.APPLICATION_ID)
+  * ios/Runner/Info.plist (GADApplicationIdentifier)
+  * lib/config/ads_config.dart (bannerAdUnitId / rewardedAdUnitId)
+- Agregar política de privacidad (obligatoria por los anuncios) y linkearla
+  en la ficha de la tienda.
+- Revisar el ícono en icons/logo.png: si se quiere un look más "genérico"
+  y pulido, conviene encargar/generar uno nuevo antes del lanzamiento.
