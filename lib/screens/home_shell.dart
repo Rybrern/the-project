@@ -18,20 +18,26 @@ class HomeShell extends StatefulWidget {
 
 class _HomeShellState extends State<HomeShell> {
   int _index = 0;
+  late final Stream<List<Wallpaper>> _wallpapersStream;
   late final Future<List<Wallpaper>> _wallpapersFuture;
   late final Future<List<WallpaperCategory>> _categoriesFuture;
 
   @override
   void initState() {
     super.initState();
-    _wallpapersFuture = widget.wallpaperService.fetchWallpapers();
+    // Un único stream compartido: la grilla de Inicio lo consume en vivo
+    // para ir mostrando fondos a medida que llegan; el resto de las
+    // pantallas usa `_wallpapersFuture` (su último valor, ya completo) sin
+    // disparar una segunda descarga.
+    _wallpapersStream = widget.wallpaperService.fetchWallpapersStream().asBroadcastStream();
+    _wallpapersFuture = _wallpapersStream.last;
     _categoriesFuture = widget.wallpaperService.fetchCategories();
   }
 
   @override
   Widget build(BuildContext context) {
     final tabs = [
-      CatalogTab(wallpapersFuture: _wallpapersFuture, categoriesFuture: _categoriesFuture),
+      CatalogTab(wallpapersStream: _wallpapersStream, categoriesFuture: _categoriesFuture),
       CategoriesTab(categoriesFuture: _categoriesFuture, wallpapersFuture: _wallpapersFuture),
       FavoritesTab(wallpapersFuture: _wallpapersFuture),
     ];
