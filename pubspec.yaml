@@ -51,6 +51,7 @@ dependencies:
   # Monetización (AdMob) y persistencia simple para el onboarding.
   google_mobile_ads: ^9.1.0
   shared_preferences: ^2.3.4
+  firebase_core: ^3.15.2
 
 dev_dependencies:
   flutter_test:
@@ -107,6 +108,16 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+# async_wallpaper 3.1.0's Android res/xml/wallpaper.xml references
+# @mipmap/ic_launcher, but the package ships no mipmap resources of its own.
+# AAPT2's per-library resource verification (Gradle's verifyReleaseResources)
+# fails release builds over this missing resource. 3.2.0 fixes it upstream but
+# has its own Kotlin compile errors, so this local fork just adds the missing
+# icon until a working upstream release exists.
+dependency_overrides:
+  async_wallpaper:
+    path: third_party/async_wallpaper
 
 flutter_launcher_icons:
   android: true
