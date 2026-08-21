@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -26,6 +27,25 @@ class WallhavenWallpaperService implements WallpaperService {
   Future<List<Wallpaper>> fetchWallpapers() async {
     final results = await Future.wait(kWallpaperCategories.map(_fetchForCategory));
     return results.expand((wallpapers) => wallpapers).toList();
+  }
+
+  @override
+  Stream<List<Wallpaper>> fetchWallpapersStream() {
+    final controller = StreamController<List<Wallpaper>>();
+    final accumulated = <Wallpaper>[];
+    var remaining = kWallpaperCategories.length;
+
+    for (final category in kWallpaperCategories) {
+      _fetchForCategory(category).then((items) {
+        accumulated.addAll(items);
+        remaining--;
+        if (controller.isClosed) return;
+        controller.add(List.unmodifiable(accumulated));
+        if (remaining == 0) controller.close();
+      });
+    }
+
+    return controller.stream;
   }
 
   /// Si una categoría falla (red inestable, error puntual de la API), no
