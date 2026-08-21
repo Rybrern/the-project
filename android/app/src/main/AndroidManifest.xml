@@ -3,10 +3,14 @@
     <uses-permission android:name="android.permission.SET_WALLPAPER"/>
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29"/>
     <application
-        android:label="wallpaper_app"
+        android:label="Fondos HD"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:requestLegacyExternalStorage="true">
+        <!-- ID real de la app en AdMob (AdMob > Apps > ID de la app). -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-8003573930637347~5998796044"/>
         <activity
             android:name=".MainActivity"
             android:exported="true"
