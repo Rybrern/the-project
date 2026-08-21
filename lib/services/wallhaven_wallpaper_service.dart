@@ -16,11 +16,8 @@ class WallhavenWallpaperService implements WallpaperService {
   final String apiKey;
 
   static const _baseUrl = 'https://wallhaven.cc/api/v1/search';
-  static const _wallpapersPerCategory = 12;
-
-  /// Proporciones típicas de pantallas de celular (retrato). Filtrar por esto
-  /// en la API evita traer fondos pensados para monitores horizontales.
-  static const _portraitRatios = '9x16,9x18,9x19,9x20,10x16';
+  // 24 es el máximo que permite la API por página.
+  static const _wallpapersPerCategory = 24;
 
   @override
   Future<List<WallpaperCategory>> fetchCategories() async => kWallpaperCategories;
@@ -40,10 +37,9 @@ class WallhavenWallpaperService implements WallpaperService {
         'q': category.query,
         'categories': '100', // general only
         'purity': '100', // sfw only
-        'ratios': _portraitRatios,
-        'sorting': 'toplist',
-        'order': 'desc',
+        'sorting': 'random', // catálogo distinto en cada carga
         'per_page': '$_wallpapersPerCategory',
+        if (category.ratios != null) 'ratios': category.ratios!,
       });
 
       final response = await http.get(uri);
@@ -53,14 +49,14 @@ class WallhavenWallpaperService implements WallpaperService {
 
       final body = jsonDecode(response.body) as Map<String, dynamic>;
       final items = (body['data'] as List<dynamic>).cast<Map<String, dynamic>>();
-      return items.map((item) => _mapItem(item, category.id)).toList();
+      return items.map((item) => _mapItem(item, category)).toList();
     } catch (error) {
       debugPrint('WallhavenWallpaperService: falló "${category.query}": $error');
       return const [];
     }
   }
 
-  Wallpaper _mapItem(Map<String, dynamic> item, String categoryId) {
+  Wallpaper _mapItem(Map<String, dynamic> item, WallpaperCategory category) {
     final width = (item['dimension_x'] as num).toDouble();
     final height = (item['dimension_y'] as num).toDouble();
     final thumbs = item['thumbs'] as Map<String, dynamic>;
@@ -70,8 +66,9 @@ class WallhavenWallpaperService implements WallpaperService {
       thumbnailUrl: thumbs['large'] as String? ?? thumbs['small'] as String,
       fullUrl: item['path'] as String,
       author: 'Wallhaven',
-      category: categoryId,
+      category: category.id,
       aspectRatio: width / height,
+      forcePortraitCrop: category.forcePortraitCrop,
     );
   }
 }

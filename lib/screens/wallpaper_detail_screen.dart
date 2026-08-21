@@ -1,13 +1,18 @@
+import 'dart:io';
+
 import 'package:async_wallpaper/async_wallpaper.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:gal/gal.dart';
 import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../models/wallpaper.dart';
 import '../state/favorites_controller.dart';
+import '../utils/wallpaper_image_processor.dart';
 
 class WallpaperDetailScreen extends StatefulWidget {
   const WallpaperDetailScreen({super.key, required this.wallpaper});
@@ -56,15 +61,49 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
   }
 
   Future<void> _applyWallpaper(WallpaperTarget target) async {
+    // Se captura antes del primer await: no se puede usar `context` después
+    // de un gap asíncrono si el widget llegó a desmontarse.
+    final screenSize = MediaQuery.sizeOf(context);
+    final targetAspectRatio = screenSize.width / screenSize.height;
+
     setState(() => _isApplying = true);
     try {
-      final result = await AsyncWallpaper.setWallpaper(
-        WallpaperRequest(
+      WallpaperRequest request;
+
+      if (widget.wallpaper.forcePortraitCrop) {
+        final response = await http.get(Uri.parse(widget.wallpaper.fullUrl));
+        if (response.statusCode != 200) {
+          _showMessage('No se pudo descargar la imagen.');
+          return;
+        }
+
+        // Recorta al centro para que coincida con la proporción de la
+        // pantalla del teléfono, incluso si el fondo original es horizontal.
+        final cropped = await compute(
+          cropToAspectRatio,
+          (response.bodyBytes, targetAspectRatio),
+        );
+
+        final tempDir = await getTemporaryDirectory();
+        final file = File('${tempDir.path}/wallpaper_${widget.wallpaper.id}.jpg');
+        await file.writeAsBytes(cropped);
+
+        request = WallpaperRequest(
+          target: target,
+          sourceType: WallpaperSourceType.file,
+          source: file.path,
+        );
+      } else {
+        // Fondos pensados para tablets/pantallas horizontales: se aplican
+        // tal cual, sin forzar un recorte vertical que arruinaría el encuadre.
+        request = WallpaperRequest(
           target: target,
           sourceType: WallpaperSourceType.url,
           source: widget.wallpaper.fullUrl,
-        ),
-      );
+        );
+      }
+
+      final result = await AsyncWallpaper.setWallpaper(request);
       _showMessage(
         result.isSuccess
             ? 'Fondo de pantalla aplicado.'

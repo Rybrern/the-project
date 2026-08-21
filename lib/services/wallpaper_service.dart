@@ -18,6 +18,14 @@ const kWallpaperCategories = [
   WallpaperCategory(id: 'animales', name: 'Animales', emoji: '🐾', query: 'animals'),
   WallpaperCategory(id: 'oscuro', name: 'Oscuro', emoji: '🌑', query: 'dark'),
   WallpaperCategory(id: 'arte', name: 'Arte', emoji: '🖼️', query: 'art'),
+  WallpaperCategory(
+    id: 'tablets',
+    name: 'Tablets',
+    emoji: '💻',
+    query: 'landscape',
+    ratios: '16x9,16x10,4x3,3x2',
+    forcePortraitCrop: false,
+  ),
 ];
 
 /// Implementación de muestra con imágenes de picsum.photos, para poder
@@ -46,6 +54,7 @@ class MockWallpaperService implements WallpaperService {
             author: 'Autor $seed',
             category: category.id,
             aspectRatio: width / height,
+            forcePortraitCrop: category.forcePortraitCrop,
           ),
         );
         seed++;
