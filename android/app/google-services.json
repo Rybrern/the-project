@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "348978113718",
+    "project_id": "wallpapersfontsfhd",
+    "storage_bucket": "wallpapersfontsfhd.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:348978113718:android:b871ce72223fca20ce8a17",
+        "android_client_info": {
+          "package_name": "com.example.wallpaper_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBOQyxpg5bgRofO1_lyfF1VFxadQ2GimJw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:348978113718:android:4a78f9e5428bd9e1ce8a17",
+        "android_client_info": {
+          "package_name": "wallpaper.font.hd"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBOQyxpg5bgRofO1_lyfF1VFxadQ2GimJw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
