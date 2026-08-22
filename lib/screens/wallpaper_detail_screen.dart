@@ -11,6 +11,7 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../models/wallpaper.dart';
+import '../services/ads_service.dart';
 import '../state/favorites_controller.dart';
 import '../utils/wallpaper_image_processor.dart';
 
@@ -30,6 +31,12 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
   Future<void> _download() async {
     setState(() => _isDownloading = true);
     try {
+      final earnedReward = await AdsService.instance.showRewardedAd();
+      if (!earnedReward) {
+        _showMessage('Mirá el anuncio completo para descargar el fondo.');
+        return;
+      }
+
       var hasAccess = await Gal.hasAccess();
       if (!hasAccess) {
         hasAccess = await Gal.requestAccess();
@@ -45,7 +52,10 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
         return;
       }
 
-      await Gal.putImageBytes(response.bodyBytes, name: 'wallpaper_${widget.wallpaper.id}');
+      await Gal.putImageBytes(
+        response.bodyBytes,
+        name: 'wallpaper_${widget.wallpaper.id}',
+      );
       _showMessage('Fondo de pantalla guardado en la galería.');
     } catch (_) {
       _showMessage('No se pudo guardar la imagen.');
@@ -56,7 +66,9 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
 
   Future<void> _share() async {
     await SharePlus.instance.share(
-      ShareParams(text: 'Mirá este fondo de pantalla: ${widget.wallpaper.fullUrl}'),
+      ShareParams(
+        text: 'Mirá este fondo de pantalla: ${widget.wallpaper.fullUrl}',
+      ),
     );
   }
 
@@ -68,6 +80,12 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
 
     setState(() => _isApplying = true);
     try {
+      final earnedReward = await AdsService.instance.showRewardedAd();
+      if (!earnedReward) {
+        _showMessage('Mirá el anuncio completo para aplicar el fondo.');
+        return;
+      }
+
       WallpaperRequest request;
 
       if (widget.wallpaper.forcePortraitCrop) {
@@ -79,13 +97,15 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
 
         // Recorta al centro para que coincida con la proporción de la
         // pantalla del teléfono, incluso si el fondo original es horizontal.
-        final cropped = await compute(
-          cropToAspectRatio,
-          (response.bodyBytes, targetAspectRatio),
-        );
+        final cropped = await compute(cropToAspectRatio, (
+          response.bodyBytes,
+          targetAspectRatio,
+        ));
 
         final tempDir = await getTemporaryDirectory();
-        final file = File('${tempDir.path}/wallpaper_${widget.wallpaper.id}.jpg');
+        final file = File(
+          '${tempDir.path}/wallpaper_${widget.wallpaper.id}.jpg',
+        );
         await file.writeAsBytes(cropped);
 
         request = WallpaperRequest(
@@ -118,7 +138,8 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
 
   void _showMessage(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _showTargetPicker() async {
@@ -157,86 +178,100 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
     final favorites = context.watch<FavoritesController>();
     final isFavorite = favorites.isFavorite(widget.wallpaper.id);
 
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: Icon(isFavorite ? Icons.favorite : Icons.favorite_border),
-            color: isFavorite ? Colors.redAccent : Colors.white,
-            onPressed: () => favorites.toggle(widget.wallpaper.id),
-          ),
-        ],
-      ),
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          CachedNetworkImage(imageUrl: widget.wallpaper.fullUrl, fit: BoxFit.cover),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Colors.transparent, Colors.black.withValues(alpha: 0.75)],
-                ),
-              ),
-              child: SafeArea(
-                top: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 32, 16, 16),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Por ${widget.wallpaper.author}',
-                        style: const TextStyle(color: Colors.white70),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          _ActionButton(
-                            icon: Icons.share_outlined,
-                            label: 'Compartir',
-                            onPressed: _share,
-                          ),
-                          _ActionButton(
-                            icon: Icons.download_outlined,
-                            label: 'Descargar',
-                            onPressed: _isDownloading ? null : _download,
-                            loading: _isDownloading,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton.icon(
-                          onPressed: _isApplying ? null : _showTargetPicker,
-                          icon: _isApplying
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                                )
-                              : const Icon(Icons.wallpaper),
-                          label: const Text('Usar como fondo de pantalla'),
-                        ),
-                      ),
+    return PopScope(
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) AdsService.instance.showInterstitialAd();
+      },
+      child: Scaffold(
+        extendBodyBehindAppBar: true,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          foregroundColor: Colors.white,
+          actions: [
+            IconButton(
+              icon: Icon(isFavorite ? Icons.favorite : Icons.favorite_border),
+              color: isFavorite ? Colors.redAccent : Colors.white,
+              onPressed: () => favorites.toggle(widget.wallpaper.id),
+            ),
+          ],
+        ),
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            CachedNetworkImage(
+              imageUrl: widget.wallpaper.fullUrl,
+              fit: BoxFit.cover,
+            ),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.75),
                     ],
+                  ),
+                ),
+                child: SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 32, 16, 16),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Por ${widget.wallpaper.author}',
+                          style: const TextStyle(color: Colors.white70),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            _ActionButton(
+                              icon: Icons.share_outlined,
+                              label: 'Compartir',
+                              onPressed: _share,
+                            ),
+                            _ActionButton(
+                              icon: Icons.download_outlined,
+                              label: 'Descargar',
+                              onPressed: _isDownloading ? null : _download,
+                              loading: _isDownloading,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton.icon(
+                            onPressed: _isApplying ? null : _showTargetPicker,
+                            icon: _isApplying
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Icon(Icons.wallpaper),
+                            label: const Text('Usar como fondo de pantalla'),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -262,7 +297,11 @@ class _ActionButton extends StatelessWidget {
         IconButton.filledTonal(
           onPressed: onPressed,
           icon: loading
-              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
               : Icon(icon),
         ),
         const SizedBox(height: 4),

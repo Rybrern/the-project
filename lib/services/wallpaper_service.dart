@@ -6,6 +6,12 @@ import '../models/wallpaper.dart';
 /// - `WallhavenWallpaperService`: catálogo real vía la API de Wallhaven.
 abstract class WallpaperService {
   Future<List<Wallpaper>> fetchWallpapers();
+
+  /// Igual que [fetchWallpapers], pero emite la lista acumulada a medida que
+  /// cada categoría va respondiendo, en vez de esperar a que todas terminen.
+  /// Permite que la grilla se empiece a llenar apenas hay datos disponibles.
+  Stream<List<Wallpaper>> fetchWallpapersStream();
+
   Future<List<WallpaperCategory>> fetchCategories();
 }
 
@@ -62,4 +68,7 @@ class MockWallpaperService implements WallpaperService {
     }
     return wallpapers;
   }
+
+  @override
+  Stream<List<Wallpaper>> fetchWallpapersStream() => Stream.fromFuture(fetchWallpapers());
 }
