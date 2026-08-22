@@ -1,9 +1,9 @@
 import 'dart:io';
 
 import 'package:async_wallpaper/async_wallpaper.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:gal/gal.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
@@ -14,6 +14,8 @@ import '../models/wallpaper.dart';
 import '../services/ads_service.dart';
 import '../state/favorites_controller.dart';
 import '../utils/wallpaper_image_processor.dart';
+import '../widgets/pannable_wallpaper_preview.dart';
+import 'wallpaper_crop_screen.dart';
 
 class WallpaperDetailScreen extends StatefulWidget {
   const WallpaperDetailScreen({super.key, required this.wallpaper});
@@ -25,6 +27,8 @@ class WallpaperDetailScreen extends StatefulWidget {
 }
 
 class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
+  static const _panoramaChannel = MethodChannel('wallpaper.font.hd/panorama');
+
   bool _isDownloading = false;
   bool _isApplying = false;
 
@@ -79,7 +83,10 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
     );
   }
 
-  Future<void> _applyWallpaper(WallpaperTarget target) async {
+  Future<void> _applyWallpaper(
+    WallpaperTarget target, {
+    double? cropAlignment,
+  }) async {
     // Se captura antes del primer await: no se puede usar `context` después
     // de un gap asíncrono si el widget llegó a desmontarse.
     final screenSize = MediaQuery.sizeOf(context);
@@ -98,7 +105,11 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
 
       WallpaperRequest request;
 
-      if (widget.wallpaper.forcePortraitCrop) {
+      // La ruta de archivo es la más compatible con MIUI para los fondos de
+      // móvil y permite aplicar el encuadre que seleccionó el usuario.
+      final shouldCrop =
+          cropAlignment != null || widget.wallpaper.forcePortraitCrop;
+      if (shouldCrop) {
         final response = await http.get(Uri.parse(widget.wallpaper.fullUrl));
         if (response.statusCode != 200) {
           _showMessage('No se pudo descargar la imagen.');
@@ -110,6 +121,7 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
         final cropped = await compute(cropToAspectRatio, (
           response.bodyBytes,
           targetAspectRatio,
+          cropAlignment ?? 0.5,
         ));
 
         final tempDir = await getTemporaryDirectory();
@@ -152,7 +164,7 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
         .showSnackBar(SnackBar(content: Text(message)));
   }
 
-  Future<void> _showTargetPicker() async {
+  Future<void> _showTargetPicker({double? cropAlignment}) async {
     final target = await showModalBottomSheet<WallpaperTarget>(
       context: context,
       builder: (context) => SafeArea(
@@ -179,7 +191,60 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
       ),
     );
     if (target != null) {
-      await _applyWallpaper(target);
+      await _applyWallpaper(target, cropAlignment: cropAlignment);
+    }
+  }
+
+  Future<void> _selectCrop() async {
+    final alignment = await Navigator.of(context).push<double>(
+      MaterialPageRoute(
+        builder: (_) => WallpaperCropScreen(
+          imageUrl: widget.wallpaper.fullUrl,
+          aspectRatio: widget.wallpaper.aspectRatio,
+        ),
+      ),
+    );
+    if (alignment != null && mounted) {
+      await _showTargetPicker(cropAlignment: alignment);
+    }
+  }
+
+  Future<void> _applyPannableWallpaper() async {
+    setState(() => _isApplying = true);
+    try {
+      if (!_adShownThisVisit) {
+        final earnedReward = await AdsService.instance.showRewardedAd();
+        if (!earnedReward) {
+          _showMessage('Mirá el anuncio completo para aplicar el fondo.');
+          return;
+        }
+        _adShownThisVisit = true;
+      }
+
+      final response = await http.get(Uri.parse(widget.wallpaper.fullUrl));
+      if (response.statusCode != 200) {
+        _showMessage('No se pudo descargar la imagen.');
+        return;
+      }
+      final tempDir = await getTemporaryDirectory();
+      final file = File('${tempDir.path}/pannable_${widget.wallpaper.id}.jpg');
+      await file.writeAsBytes(response.bodyBytes);
+
+      final opened = await _panoramaChannel.invokeMethod<bool>(
+        'setPannableWallpaper',
+        {'path': file.path},
+      );
+      _showMessage(
+        opened == true
+            ? 'Confirmá el fondo panorámico en la pantalla de Android.'
+            : 'No se pudo abrir el selector de fondo panorámico.',
+      );
+    } on PlatformException catch (_) {
+      _showMessage('No se pudo preparar el fondo panorámico.');
+    } catch (_) {
+      _showMessage('No se pudo aplicar el fondo panorámico.');
+    } finally {
+      if (mounted) setState(() => _isApplying = false);
     }
   }
 
@@ -205,9 +270,9 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          CachedNetworkImage(
+          PannableWallpaperPreview(
             imageUrl: widget.wallpaper.fullUrl,
-            fit: BoxFit.cover,
+            aspectRatio: widget.wallpaper.aspectRatio,
           ),
           Positioned(
             left: 0,
@@ -270,6 +335,34 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
                           label: const Text('Usar como fondo de pantalla'),
                         ),
                       ),
+                      if (widget.wallpaper.aspectRatio > 1) ...[
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton.tonalIcon(
+                            onPressed: _isApplying
+                                ? null
+                                : _applyPannableWallpaper,
+                            icon: const Icon(Icons.swipe),
+                            label: const Text(
+                              'Usar fondo panorámico desplazable',
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.white,
+                              side: const BorderSide(color: Colors.white70),
+                            ),
+                            onPressed: _isApplying ? null : _selectCrop,
+                            icon: const Icon(Icons.crop),
+                            label: const Text('Elegir encuadre'),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),

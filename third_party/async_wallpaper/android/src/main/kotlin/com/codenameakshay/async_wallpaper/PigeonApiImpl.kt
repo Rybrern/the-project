@@ -324,6 +324,16 @@ class PigeonApiImpl(
 
   private fun setBitmap(bitmap: Bitmap, flag: Int) {
     val wallpaperManager = WallpaperManager.getInstance(context)
+    // Al aplicar una panorÃ¡mica completa en inicio, indicamos al launcher que
+    // el fondo puede ocupar mÃ¡s ancho que la pantalla. Los launchers que
+    // ofrecen scroll de wallpapers (Pixel/Launcher3, entre otros) usarÃ¡n esta
+    // dimensiÃ³n para permitir el desplazamiento entre paneles.
+    if (
+      bitmap.width > bitmap.height &&
+      (flag and WallpaperManager.FLAG_SYSTEM) != 0
+    ) {
+      wallpaperManager.suggestDesiredDimensions(bitmap.width, bitmap.height)
+    }
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
       wallpaperManager.setBitmap(bitmap, null, true, flag)
     } else {

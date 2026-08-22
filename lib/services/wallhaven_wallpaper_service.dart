@@ -20,6 +20,16 @@ class WallhavenWallpaperService implements WallpaperService {
   // 24 es el máximo que permite la API por página.
   static const _wallpapersPerCategory = 24;
 
+  // El purity=100 de Wallhaven ("SFW") no alcanza solo: hay fan art de
+  // personajes (sobre todo en categorías de juegos) que Wallhaven etiqueta
+  // como SFW igual mostrando bastante piel. Estos términos negativos se
+  // agregan a toda búsqueda para bajar ese riesgo — no lo eliminan del todo,
+  // porque dependen de que la imagen esté etiquetada con alguno de estos
+  // tags en Wallhaven.
+  static const _safetyExclusions =
+      '-nsfw -sexy -cleavage -bikini -lingerie -underwear -swimsuit -ecchi '
+      '-ahegao -upskirt -pinup -thighs -boobs -butt -ass -bra -panties';
+
   @override
   Future<List<WallpaperCategory>> fetchCategories() async => kWallpaperCategories;
 
@@ -54,7 +64,7 @@ class WallhavenWallpaperService implements WallpaperService {
     try {
       final uri = Uri.parse(_baseUrl).replace(queryParameters: {
         'apikey': apiKey,
-        'q': category.query,
+        'q': '${category.query} $_safetyExclusions',
         'categories': '100', // general only
         'purity': '100', // sfw only
         'sorting': 'random', // catálogo distinto en cada carga

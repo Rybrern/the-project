@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+import 'package:provider/provider.dart';
 
 import '../models/category.dart';
 import '../models/wallpaper.dart';
+import '../state/orientation_preference_controller.dart';
+import '../utils/wallpaper_orientation_filter.dart';
 import '../widgets/category_chip.dart';
 import '../widgets/wallpaper_tile.dart';
 import 'wallpaper_detail_screen.dart';
@@ -20,10 +23,63 @@ class CatalogTab extends StatefulWidget {
 class _CatalogTabState extends State<CatalogTab> {
   String? _selectedCategoryId;
 
+  Future<void> _toggleShowMismatched(bool value) async {
+    final orientationPrefs = context.read<OrientationPreferenceController>();
+    if (!value) {
+      await orientationPrefs.setShowMismatched(false);
+      return;
+    }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('¿Ver fondos descuadrados?'),
+        content: const Text(
+          'Tu pantalla es angosta: los fondos horizontales pueden verse '
+          'recortados o forzados si los aplicás. ¿Querés verlos igual en el '
+          'catálogo?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Ver igual'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await orientationPrefs.setShowMismatched(true);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final deviceFitsWide = deviceFitsWideWallpapers(context);
+    final orientationPrefs = context.watch<OrientationPreferenceController>();
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Fondos de pantalla')),
+      appBar: AppBar(
+        title: const Text('Fondos de pantalla'),
+        actions: deviceFitsWide
+            ? null
+            : [
+                IconButton(
+                  tooltip: orientationPrefs.showMismatched
+                      ? 'Ocultar fondos descuadrados'
+                      : 'Ver fondos descuadrados',
+                  icon: Icon(
+                    orientationPrefs.showMismatched
+                        ? Icons.check_box_outlined
+                        : Icons.check_box_outline_blank,
+                  ),
+                  onPressed: () =>
+                      _toggleShowMismatched(!orientationPrefs.showMismatched),
+                ),
+              ],
+      ),
       body: FutureBuilder<List<WallpaperCategory>>(
         future: widget.categoriesFuture,
         builder: (context, categorySnapshot) {
@@ -69,9 +125,14 @@ class _CatalogTabState extends State<CatalogTab> {
                       return const Center(child: CircularProgressIndicator());
                     }
 
-                    final filtered = _selectedCategoryId == null
+                    final byCategory = _selectedCategoryId == null
                         ? wallpapers
                         : wallpapers.where((w) => w.category == _selectedCategoryId).toList();
+                    final filtered = filterByOrientation(
+                      byCategory,
+                      deviceFitsWide: deviceFitsWide,
+                      showMismatched: orientationPrefs.showMismatched,
+                    );
 
                     return Column(
                       children: [
