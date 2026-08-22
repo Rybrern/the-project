@@ -28,13 +28,21 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
   bool _isDownloading = false;
   bool _isApplying = false;
 
+  // Como mucho un anuncio por visita a esta pantalla: si ya se vio el
+  // recompensado (al descargar o aplicar), ni la otra acción ni el
+  // intersticial de salida vuelven a pedir otro.
+  bool _adShownThisVisit = false;
+
   Future<void> _download() async {
     setState(() => _isDownloading = true);
     try {
-      final earnedReward = await AdsService.instance.showRewardedAd();
-      if (!earnedReward) {
-        _showMessage('Mirá el anuncio completo para descargar el fondo.');
-        return;
+      if (!_adShownThisVisit) {
+        final earnedReward = await AdsService.instance.showRewardedAd();
+        if (!earnedReward) {
+          _showMessage('Mirá el anuncio completo para descargar el fondo.');
+          return;
+        }
+        _adShownThisVisit = true;
       }
 
       var hasAccess = await Gal.hasAccess();
@@ -80,10 +88,13 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
 
     setState(() => _isApplying = true);
     try {
-      final earnedReward = await AdsService.instance.showRewardedAd();
-      if (!earnedReward) {
-        _showMessage('Mirá el anuncio completo para aplicar el fondo.');
-        return;
+      if (!_adShownThisVisit) {
+        final earnedReward = await AdsService.instance.showRewardedAd();
+        if (!earnedReward) {
+          _showMessage('Mirá el anuncio completo para aplicar el fondo.');
+          return;
+        }
+        _adShownThisVisit = true;
       }
 
       WallpaperRequest request;
@@ -180,7 +191,7 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
 
     return PopScope(
       onPopInvokedWithResult: (didPop, _) {
-        if (didPop) AdsService.instance.showInterstitialAd();
+        if (didPop && !_adShownThisVisit) AdsService.instance.showInterstitialAd();
       },
       child: Scaffold(
         extendBodyBehindAppBar: true,
