@@ -9,6 +9,7 @@ import 'screens/onboarding_screen.dart';
 import 'services/ads_service.dart';
 import 'services/wallhaven_wallpaper_service.dart';
 import 'state/favorites_controller.dart';
+import 'state/orientation_preference_controller.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,8 +23,11 @@ class WallpaperApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => FavoritesController(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => FavoritesController()),
+        ChangeNotifierProvider(create: (_) => OrientationPreferenceController()),
+      ],
       child: MaterialApp(
         title: 'Fondos HD',
         theme: ThemeData(

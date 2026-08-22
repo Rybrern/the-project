@@ -16,14 +16,166 @@ abstract class WallpaperService {
 }
 
 const kWallpaperCategories = [
-  WallpaperCategory(id: 'naturaleza', name: 'Naturaleza', emoji: '🌿', query: 'nature'),
-  WallpaperCategory(id: 'abstracto', name: 'Abstracto', emoji: '🎨', query: 'abstract'),
-  WallpaperCategory(id: 'espacio', name: 'Espacio', emoji: '🌌', query: 'space'),
-  WallpaperCategory(id: 'minimalista', name: 'Minimalista', emoji: '⬛', query: 'minimal'),
-  WallpaperCategory(id: 'arquitectura', name: 'Arquitectura', emoji: '🏙️', query: 'architecture'),
-  WallpaperCategory(id: 'animales', name: 'Animales', emoji: '🐾', query: 'animals'),
+  WallpaperCategory(
+    id: 'naturaleza',
+    name: 'Naturaleza',
+    emoji: '🌿',
+    query: 'nature',
+  ),
+  WallpaperCategory(
+    id: 'abstracto',
+    name: 'Abstracto',
+    emoji: '🎨',
+    query: 'abstract',
+  ),
+  WallpaperCategory(
+    id: 'espacio',
+    name: 'Espacio',
+    emoji: '🌌',
+    query: 'space',
+  ),
+  WallpaperCategory(
+    id: 'minimalista',
+    name: 'Minimalista',
+    emoji: '⬛',
+    query: 'minimal',
+  ),
+  WallpaperCategory(
+    id: 'arquitectura',
+    name: 'Arquitectura',
+    emoji: '🏙️',
+    query: 'architecture',
+  ),
+  WallpaperCategory(
+    id: 'animales',
+    name: 'Animales',
+    emoji: '🐾',
+    query: 'animals',
+  ),
   WallpaperCategory(id: 'oscuro', name: 'Oscuro', emoji: '🌑', query: 'dark'),
   WallpaperCategory(id: 'arte', name: 'Arte', emoji: '🖼️', query: 'art'),
+  // Juegos y sagas populares. Cada entrada usa una búsqueda directa en
+  // Wallhaven para que la sección se pueda ampliar sin cambiar la UI.
+  WallpaperCategory(
+    id: 'undertale',
+    name: 'Undertale',
+    emoji: '\u{1f9e1}',
+    query: 'Undertale',
+  ),
+  WallpaperCategory(
+    id: 'monster-hunter',
+    name: 'Monster Hunter',
+    emoji: '\u{1f409}',
+    query: 'Monster Hunter',
+  ),
+  WallpaperCategory(
+    id: 'hitman',
+    name: 'Hitman',
+    emoji: '\u{1f3af}',
+    query: 'Hitman',
+  ),
+  WallpaperCategory(
+    id: 'gta',
+    name: 'Grand Theft Auto',
+    emoji: '\u{1f697}',
+    query: 'Grand Theft Auto',
+  ),
+  WallpaperCategory(
+    id: 'minecraft',
+    name: 'Minecraft',
+    emoji: '\u{26cf}',
+    query: 'Minecraft',
+  ),
+  WallpaperCategory(
+    id: 'escape-from-tarkov',
+    name: 'Escape from Tarkov',
+    emoji: '\u{1f3af}',
+    query: 'Escape from Tarkov',
+  ),
+  WallpaperCategory(
+    id: 'uncharted',
+    name: 'Uncharted',
+    emoji: '\u{1f5fa}',
+    query: 'Uncharted',
+  ),
+  WallpaperCategory(
+    id: 'star-wars',
+    name: 'Star Wars',
+    emoji: '\u{2728}',
+    query: 'Star Wars',
+  ),
+  WallpaperCategory(
+    id: 'marvel',
+    name: 'Marvel',
+    emoji: '\u{1f9b8}',
+    query: 'Marvel',
+  ),
+  WallpaperCategory(
+    id: 'god-of-war',
+    name: 'God of War',
+    emoji: '\u{2694}',
+    query: 'God of War',
+  ),
+  WallpaperCategory(
+    id: 'the-witcher',
+    name: 'The Witcher',
+    emoji: '\u{1f43a}',
+    query: 'The Witcher',
+  ),
+  WallpaperCategory(
+    id: 'cyberpunk-2077',
+    name: 'Cyberpunk 2077',
+    emoji: '\u{1f916}',
+    query: 'Cyberpunk 2077',
+  ),
+  WallpaperCategory(
+    id: 'red-dead-redemption',
+    name: 'Red Dead Redemption',
+    emoji: '\u{1f920}',
+    query: 'Red Dead Redemption',
+  ),
+  WallpaperCategory(
+    id: 'the-last-of-us',
+    name: 'The Last of Us',
+    emoji: '\u{1f344}',
+    query: 'The Last of Us',
+  ),
+  WallpaperCategory(
+    id: 'elden-ring',
+    name: 'Elden Ring',
+    emoji: '\u{1f48d}',
+    query: 'Elden Ring',
+  ),
+  WallpaperCategory(
+    id: 'fallout',
+    name: 'Fallout',
+    emoji: '\u{2622}',
+    query: 'Fallout',
+  ),
+  WallpaperCategory(
+    id: 'assassins-creed',
+    name: "Assassin's Creed",
+    emoji: '\u{1f5e1}',
+    query: "Assassin's Creed",
+  ),
+  WallpaperCategory(
+    id: 'resident-evil',
+    name: 'Resident Evil',
+    emoji: '\u{1f9df}',
+    query: 'Resident Evil',
+  ),
+  WallpaperCategory(
+    id: 'the-legend-of-zelda',
+    name: 'The Legend of Zelda',
+    emoji: '\u{1f3f9}',
+    query: 'The Legend of Zelda',
+  ),
+  WallpaperCategory(
+    id: 'halo',
+    name: 'Halo',
+    emoji: '\u{1fa96}',
+    query: 'Halo',
+  ),
   WallpaperCategory(
     id: 'tablets',
     name: 'Tablets',
@@ -41,7 +193,8 @@ class MockWallpaperService implements WallpaperService {
   static const _wallpapersPerCategory = 6;
 
   @override
-  Future<List<WallpaperCategory>> fetchCategories() async => kWallpaperCategories;
+  Future<List<WallpaperCategory>> fetchCategories() async =>
+      kWallpaperCategories;
 
   @override
   Future<List<Wallpaper>> fetchWallpapers() async {
@@ -70,5 +223,6 @@ class MockWallpaperService implements WallpaperService {
   }
 
   @override
-  Stream<List<Wallpaper>> fetchWallpapersStream() => Stream.fromFuture(fetchWallpapers());
+  Stream<List<Wallpaper>> fetchWallpapersStream() =>
+      Stream.fromFuture(fetchWallpapers());
 }
