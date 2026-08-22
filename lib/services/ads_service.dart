@@ -12,13 +12,9 @@ class AdsService {
   RewardedAd? _rewardedAd;
   bool _loadingRewardedAd = false;
 
-  InterstitialAd? _interstitialAd;
-  bool _loadingInterstitialAd = false;
-
   Future<void> initialize() async {
     await MobileAds.instance.initialize();
     _loadRewardedAd();
-    _loadInterstitialAd();
   }
 
   void _loadRewardedAd() {
@@ -69,47 +65,4 @@ class AdsService {
     return earnedReward;
   }
 
-  void _loadInterstitialAd() {
-    if (_loadingInterstitialAd || _interstitialAd != null) return;
-    _loadingInterstitialAd = true;
-    InterstitialAd.load(
-      adUnitId: AdsConfig.interstitialAdUnitId,
-      request: const AdRequest(),
-      adLoadCallback: InterstitialAdLoadCallback(
-        onAdLoaded: (ad) {
-          _loadingInterstitialAd = false;
-          _interstitialAd = ad;
-        },
-        onAdFailedToLoad: (_) {
-          _loadingInterstitialAd = false;
-          _interstitialAd = null;
-        },
-      ),
-    );
-  }
-
-  /// Muestra el anuncio intersticial si hay uno disponible. No bloquea nada
-  /// si no hay anuncio cargado: simplemente no se muestra.
-  Future<void> showInterstitialAd() async {
-    final ad = _interstitialAd;
-    if (ad == null) {
-      _loadInterstitialAd();
-      return;
-    }
-
-    _interstitialAd = null;
-
-    ad.fullScreenContentCallback = FullScreenContentCallback(
-      onAdDismissedFullScreenContent: (ad) {
-        ad.dispose();
-        _loadInterstitialAd();
-      },
-      onAdFailedToShowFullScreenContent: (ad, _) {
-        ad.dispose();
-        _loadInterstitialAd();
-      },
-    );
-
-    await ad.show();
-  }
 }
