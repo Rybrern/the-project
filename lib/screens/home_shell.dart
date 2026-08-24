@@ -4,9 +4,10 @@ import '../models/category.dart';
 import '../models/wallpaper.dart';
 import '../services/wallpaper_service.dart';
 import '../widgets/banner_ad_widget.dart';
-import 'catalog_tab.dart';
 import 'categories_tab.dart';
-import 'favorites_tab.dart';
+import 'home_tab.dart';
+import 'settings_tab.dart';
+import 'wallpapers_tab.dart';
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key, required this.wallpaperService});
@@ -19,6 +20,15 @@ class HomeShell extends StatefulWidget {
 
 class _HomeShellState extends State<HomeShell> {
   int _index = 0;
+
+  // "Fondos" arranca en Estáticos por defecto, pero la tarjeta "Fondos
+  // animados" del hub de Inicio necesita poder abrirlo directo en Animados.
+  // Como el tab vive en un IndexedStack (mantiene su estado), cambiarle el
+  // `initialTabIndex` no alcanza: hay que forzar una reconstrucción nueva
+  // bumpeando la key cuando el usuario lo pide explícitamente desde Inicio.
+  int _fondosInitialTab = 0;
+  int _fondosInstanceKey = 0;
+
   late final Stream<List<Wallpaper>> _wallpapersStream;
   late final Future<List<Wallpaper>> _wallpapersFuture;
   late final Future<List<WallpaperCategory>> _categoriesFuture;
@@ -26,7 +36,7 @@ class _HomeShellState extends State<HomeShell> {
   @override
   void initState() {
     super.initState();
-    // Un único stream compartido: la grilla de Inicio lo consume en vivo
+    // Un único stream compartido: la grilla de Fondos lo consume en vivo
     // para ir mostrando fondos a medida que llegan; el resto de las
     // pantallas usa `_wallpapersFuture` (su último valor, ya completo) sin
     // disparar una segunda descarga.
@@ -35,12 +45,32 @@ class _HomeShellState extends State<HomeShell> {
     _categoriesFuture = widget.wallpaperService.fetchCategories();
   }
 
+  void _goToFondos({required bool animated}) {
+    setState(() {
+      _index = 1;
+      _fondosInitialTab = animated ? 1 : 0;
+      _fondosInstanceKey++;
+    });
+  }
+
+  void _goToCategorias() => setState(() => _index = 2);
+
   @override
   Widget build(BuildContext context) {
     final tabs = [
-      CatalogTab(wallpapersStream: _wallpapersStream, categoriesFuture: _categoriesFuture),
+      HomeTab(
+        onOpenFondos: _goToFondos,
+        onOpenCategorias: _goToCategorias,
+        wallpapersFuture: _wallpapersFuture,
+      ),
+      WallpapersTab(
+        key: ValueKey(_fondosInstanceKey),
+        wallpapersStream: _wallpapersStream,
+        categoriesFuture: _categoriesFuture,
+        initialTabIndex: _fondosInitialTab,
+      ),
       CategoriesTab(categoriesFuture: _categoriesFuture, wallpapersFuture: _wallpapersFuture),
-      FavoritesTab(wallpapersFuture: _wallpapersFuture),
+      const SettingsTab(),
     ];
 
     return Scaffold(
@@ -54,9 +84,14 @@ class _HomeShellState extends State<HomeShell> {
             onDestinationSelected: (index) => setState(() => _index = index),
             destinations: const [
               NavigationDestination(
-                icon: Icon(Icons.explore_outlined),
-                selectedIcon: Icon(Icons.explore),
+                icon: Icon(Icons.home_outlined),
+                selectedIcon: Icon(Icons.home),
                 label: 'Inicio',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.wallpaper_outlined),
+                selectedIcon: Icon(Icons.wallpaper),
+                label: 'Fondos',
               ),
               NavigationDestination(
                 icon: Icon(Icons.category_outlined),
@@ -64,9 +99,9 @@ class _HomeShellState extends State<HomeShell> {
                 label: 'Categorías',
               ),
               NavigationDestination(
-                icon: Icon(Icons.favorite_border),
-                selectedIcon: Icon(Icons.favorite),
-                label: 'Favoritos',
+                icon: Icon(Icons.settings_outlined),
+                selectedIcon: Icon(Icons.settings),
+                label: 'Ajustes',
               ),
             ],
           ),

@@ -13,8 +13,10 @@ import 'package:share_plus/share_plus.dart';
 import '../models/wallpaper.dart';
 import '../services/ads_service.dart';
 import '../state/favorites_controller.dart';
+import '../state/quality_settings_controller.dart';
 import '../utils/wallpaper_image_processor.dart';
 import '../widgets/pannable_wallpaper_preview.dart';
+import '../widgets/wallpaper_target_sheet.dart';
 import 'wallpaper_crop_screen.dart';
 
 class WallpaperDetailScreen extends StatefulWidget {
@@ -91,6 +93,9 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
     // de un gap asíncrono si el widget llegó a desmontarse.
     final screenSize = MediaQuery.sizeOf(context);
     final targetAspectRatio = screenSize.width / screenSize.height;
+    final qualityParams = imageQualityParams(
+      context.read<QualitySettingsController>().imageQuality,
+    );
 
     setState(() => _isApplying = true);
     try {
@@ -122,6 +127,8 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
           response.bodyBytes,
           targetAspectRatio,
           cropAlignment ?? 0.5,
+          qualityParams.maxDimension,
+          qualityParams.jpegQuality,
         ));
 
         final tempDir = await getTemporaryDirectory();
@@ -165,31 +172,7 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
   }
 
   Future<void> _showTargetPicker({double? cropAlignment}) async {
-    final target = await showModalBottomSheet<WallpaperTarget>(
-      context: context,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.home_outlined),
-              title: const Text('Pantalla de inicio'),
-              onTap: () => Navigator.of(context).pop(WallpaperTarget.home),
-            ),
-            ListTile(
-              leading: const Icon(Icons.lock_outline),
-              title: const Text('Pantalla de bloqueo'),
-              onTap: () => Navigator.of(context).pop(WallpaperTarget.lock),
-            ),
-            ListTile(
-              leading: const Icon(Icons.smartphone),
-              title: const Text('Ambas pantallas'),
-              onTap: () => Navigator.of(context).pop(WallpaperTarget.both),
-            ),
-          ],
-        ),
-      ),
-    );
+    final target = await showWallpaperTargetSheet(context);
     if (target != null) {
       await _applyWallpaper(target, cropAlignment: cropAlignment);
     }
@@ -332,7 +315,7 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
                                   ),
                                 )
                               : const Icon(Icons.wallpaper),
-                          label: const Text('Usar como fondo de pantalla'),
+                          label: const Text('Establecer fondo'),
                         ),
                       ),
                       if (widget.wallpaper.aspectRatio > 1) ...[

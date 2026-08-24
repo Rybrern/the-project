@@ -49,3 +49,4 @@ app.*.map.json
 
 # Local API keys — never commit real secrets.
 /lib/config/wallhaven_config.dart
+/lib/config/media_api_config.dart

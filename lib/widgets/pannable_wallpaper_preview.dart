@@ -59,7 +59,12 @@ class _PannableWallpaperPreviewState extends State<PannableWallpaperPreview> {
       builder: (context, constraints) {
         final viewportWidth = constraints.maxWidth;
         final viewportHeight = constraints.maxHeight;
-        final isPanorama = widget.aspectRatio > viewportWidth / viewportHeight;
+        // Comparado contra 1.0 (no contra el ratio de la pantalla): en un
+        // celular angosto casi cualquier fondo vertical es "más ancho" que
+        // la pantalla en términos relativos, lo que activaba el modo
+        // panorámico (y su InteractiveViewer, que tapaba el botón de aplicar)
+        // para fondos que ni siquiera son horizontales.
+        final isPanorama = widget.aspectRatio > 1;
 
         if (!isPanorama) {
           return CachedNetworkImage(

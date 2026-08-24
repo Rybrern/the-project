@@ -10,6 +10,7 @@ import 'services/ads_service.dart';
 import 'services/wallhaven_wallpaper_service.dart';
 import 'state/favorites_controller.dart';
 import 'state/orientation_preference_controller.dart';
+import 'state/quality_settings_controller.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,6 +28,7 @@ class WallpaperApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => FavoritesController()),
         ChangeNotifierProvider(create: (_) => OrientationPreferenceController()),
+        ChangeNotifierProvider(create: (_) => QualitySettingsController()),
       ],
       child: MaterialApp(
         title: 'Fondos HD',

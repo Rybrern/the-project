@@ -54,6 +54,69 @@ const kWallpaperCategories = [
   ),
   WallpaperCategory(id: 'oscuro', name: 'Oscuro', emoji: '🌑', query: 'dark'),
   WallpaperCategory(id: 'arte', name: 'Arte', emoji: '🖼️', query: 'art'),
+  // Categorías del criterio de contenido permitido que todavía no tenían
+  // representación propia en el catálogo (antes solo estaban cubiertas de
+  // forma indirecta por franquicias puntuales de juegos/películas).
+  WallpaperCategory(
+    id: 'paisajes-nocturnos',
+    name: 'Paisajes nocturnos',
+    emoji: '🌃',
+    query: 'night landscape',
+  ),
+  WallpaperCategory(
+    id: 'autos',
+    name: 'Autos y motos',
+    emoji: '🏎️',
+    query: 'cars motorcycles',
+  ),
+  WallpaperCategory(
+    id: 'deportes',
+    name: 'Deportes',
+    emoji: '⚽',
+    query: 'sports',
+  ),
+  WallpaperCategory(
+    id: 'celebridades',
+    name: 'Celebridades',
+    emoji: '🌟',
+    query: 'celebrity portrait',
+  ),
+  WallpaperCategory(
+    id: 'peliculas-series',
+    name: 'Películas y series',
+    emoji: '🎬',
+    query: 'movie poster',
+  ),
+  WallpaperCategory(
+    id: 'anime',
+    name: 'Anime',
+    emoji: '🎌',
+    query: 'anime',
+  ),
+  WallpaperCategory(
+    id: 'videojuegos',
+    name: 'Videojuegos',
+    emoji: '🎮',
+    query: 'video games',
+  ),
+  WallpaperCategory(
+    id: 'ciencia-ficcion',
+    name: 'Ciencia ficción',
+    emoji: '🚀',
+    query: 'sci-fi',
+  ),
+  WallpaperCategory(
+    id: 'fantasia',
+    name: 'Fantasía',
+    emoji: '🐉',
+    query: 'fantasy art',
+  ),
+  WallpaperCategory(
+    id: 'tecnologia',
+    name: 'Tecnología',
+    emoji: '🤖',
+    query: 'technology',
+  ),
   // Juegos y sagas populares. Cada entrada usa una búsqueda directa en
   // Wallhaven para que la sección se pueda ampliar sin cambiar la UI.
   WallpaperCategory(
