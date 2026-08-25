@@ -48,12 +48,34 @@ class AppDatabase {
   Future<void> _executeMigrations(Database db, int startVersion, int endVersion) async {
     for (var version = startVersion; version <= endVersion; version++) {
       final sql = await _loadMigration(version);
-      // Ejecuta cada statement por separado
-      final statements = sql.split(';').map((s) => s.trim()).where((s) => s.isNotEmpty);
+      // Ejecuta cada statement por separado, filtrando comentarios
+      final statements = _parseSqlStatements(sql);
       for (final statement in statements) {
-        await db.execute(statement);
+        if (statement.isNotEmpty) {
+          await db.execute(statement);
+        }
       }
     }
+  }
+
+  List<String> _parseSqlStatements(String sql) {
+    final statements = <String>[];
+    final lines = sql.split('\n');
+    final buffer = StringBuffer();
+
+    for (final line in lines) {
+      final trimmed = line.trim();
+      // Ignora líneas vacías y comentarios
+      if (trimmed.isEmpty || trimmed.startsWith('--')) {
+        continue;
+      }
+      buffer.writeln(line);
+    }
+
+    // Divide por punto y coma y filtra vacíos
+    final fullSql = buffer.toString();
+    final parts = fullSql.split(';').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+    return parts;
   }
 
   Future<String> _loadMigration(int version) async {
