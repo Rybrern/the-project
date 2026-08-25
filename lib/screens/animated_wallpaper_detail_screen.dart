@@ -13,6 +13,15 @@ import '../models/animated_wallpaper.dart';
 import '../services/ads_service.dart';
 import '../state/quality_settings_controller.dart';
 
+enum _WallpaperTarget {
+  home('Pantalla principal'),
+  lock('Pantalla de bloqueo (imagen fija)'),
+  both('Ambas');
+
+  const _WallpaperTarget(this.label);
+  final String label;
+}
+
 class AnimatedWallpaperDetailScreen extends StatefulWidget {
   const AnimatedWallpaperDetailScreen({super.key, required this.wallpaper});
 
@@ -40,10 +49,8 @@ class _AnimatedWallpaperDetailScreenState
 
   late final VideoPlayerController _controller;
   bool _isApplying = false;
+  _WallpaperTarget _selectedTarget = _WallpaperTarget.home;
 
-  // Como mucho un anuncio recompensado por visita a esta pantalla, sin
-  // importar cuántas de las dos acciones (video/imagen) termine disparando
-  // "Ambas".
   bool _adShownThisVisit = false;
 
   @override
@@ -64,54 +71,78 @@ class _AnimatedWallpaperDetailScreenState
     super.dispose();
   }
 
-  // Aplicar un fondo animado en Android ya implica un flujo del sistema en
-  // dos pasos (vista previa → elegir "pantalla principal" u "pantalla
-  // principal y bloqueada") que no se puede saltear ni preconfigurar desde
-  // la app. Agregar acá ARRIBA un tercer menú propio preguntando lo mismo
-  // resultaba en 3 pantallas consecutivas pidiendo básicamente la misma
-  // decisión. Por eso los dos botones son acciones directas e
-  // independientes (sin sheet intermedio), y "también en la de bloqueo" se
-  // ofrece como una acción rápida en el aviso de después, no como una
-  // pregunta previa.
-  Future<void> _applyHome() async {
+  Future<void> _apply() async {
     final prefs = await SharedPreferences.getInstance();
-    final alreadyApplied = prefs.getString(_lastHomeIdKey) == widget.wallpaper.id &&
-        await _isActiveHomeWallpaper();
-    if (alreadyApplied) {
-      _showMessage('Este fondo ya está aplicado en la pantalla principal.');
-      return;
-    }
 
     setState(() => _isApplying = true);
     try {
-      final ok = await _applyHomeVideo();
-      if (!ok) {
-        _showMessage('No se pudo aplicar el fondo animado.');
-        return;
+      if (!await _ensureAdShown()) return;
+
+      switch (_selectedTarget) {
+        case _WallpaperTarget.home:
+          final alreadyApplied = prefs.getString(_lastHomeIdKey) == widget.wallpaper.id &&
+              await _isActiveHomeWallpaper();
+          if (alreadyApplied) {
+            _showMessage('Este fondo ya está aplicado en la pantalla principal.');
+            return;
+          }
+
+          final ok = await _applyHomeVideo();
+          if (!ok) {
+            _showMessage('No se pudo aplicar el fondo animado.');
+            return;
+          }
+          await prefs.setString(_lastHomeIdKey, widget.wallpaper.id);
+          _showMessage('Confirmá en la pantalla de Android.');
+
+        case _WallpaperTarget.lock:
+          if (prefs.getString(_lastLockIdKey) == widget.wallpaper.id) {
+            _showMessage('Este fondo ya está aplicado en la pantalla de bloqueo.');
+            return;
+          }
+
+          final ok = await _applyLockImage();
+          if (ok) {
+            await prefs.setString(_lastLockIdKey, widget.wallpaper.id);
+            _showMessage('Imagen aplicada en la pantalla de bloqueo.');
+          } else {
+            _showMessage('No se pudo aplicar el fondo de bloqueo.');
+          }
+
+        case _WallpaperTarget.both:
+          bool homeSuccess = false;
+          bool lockSuccess = false;
+
+          final homeAlreadyApplied = prefs.getString(_lastHomeIdKey) == widget.wallpaper.id &&
+              await _isActiveHomeWallpaper();
+          if (!homeAlreadyApplied) {
+            homeSuccess = await _applyHomeVideo();
+            if (homeSuccess) {
+              await prefs.setString(_lastHomeIdKey, widget.wallpaper.id);
+            }
+          } else {
+            homeSuccess = true;
+          }
+
+          if (prefs.getString(_lastLockIdKey) != widget.wallpaper.id) {
+            lockSuccess = await _applyLockImage();
+            if (lockSuccess) {
+              await prefs.setString(_lastLockIdKey, widget.wallpaper.id);
+            }
+          } else {
+            lockSuccess = true;
+          }
+
+          if (homeSuccess && lockSuccess) {
+            _showMessage('Fondos aplicados. Confirmá en la pantalla de Android si es necesario.');
+          } else if (homeSuccess) {
+            _showMessage('Pantalla principal: confirmá en Android. Pantalla de bloqueo: no se pudo aplicar.');
+          } else if (lockSuccess) {
+            _showMessage('Pantalla de bloqueo aplicada. Pantalla principal: no se pudo aplicar.');
+          } else {
+            _showMessage('No se pudo aplicar los fondos.');
+          }
       }
-      await prefs.setString(_lastHomeIdKey, widget.wallpaper.id);
-      _showHomeAppliedMessage();
-    } finally {
-      if (mounted) setState(() => _isApplying = false);
-    }
-  }
-
-  Future<void> _applyLock() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (prefs.getString(_lastLockIdKey) == widget.wallpaper.id) {
-      _showMessage('Este fondo ya está aplicado en la pantalla de bloqueo.');
-      return;
-    }
-
-    setState(() => _isApplying = true);
-    try {
-      final ok = await _applyLockImage();
-      if (ok) await prefs.setString(_lastLockIdKey, widget.wallpaper.id);
-      _showMessage(
-        ok
-            ? 'Imagen aplicada en la pantalla de bloqueo.'
-            : 'No se pudo aplicar el fondo de bloqueo.',
-      );
     } finally {
       if (mounted) setState(() => _isApplying = false);
     }
@@ -130,16 +161,6 @@ class _AnimatedWallpaperDetailScreenState
     }
   }
 
-  void _showHomeAppliedMessage() {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Tocá "Pantalla principal" en la pantalla de Android para confirmar.'),
-        duration: const Duration(seconds: 6),
-        action: SnackBarAction(label: 'También en bloqueo', onPressed: _applyLock),
-      ),
-    );
-  }
 
   Future<bool> _applyHomeVideo() async {
     try {
@@ -245,6 +266,40 @@ class _AnimatedWallpaperDetailScreenState
                             .read<QualitySettingsController>()
                             .setAnimatedQuality(value),
                   ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.45),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text('Destino: ', style: TextStyle(color: Colors.white70)),
+                        DropdownButton<_WallpaperTarget>(
+                          value: _selectedTarget,
+                          dropdownColor: Theme.of(context).colorScheme.surface,
+                          underline: const SizedBox.shrink(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          iconEnabledColor: Colors.white70,
+                          onChanged: _isApplying ? null : (value) {
+                            if (value != null) setState(() => _selectedTarget = value);
+                          },
+                          items: [
+                            for (final target in _WallpaperTarget.values)
+                              DropdownMenuItem(
+                                value: target,
+                                child: Text(target.label),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
                   const SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
@@ -257,7 +312,7 @@ class _AnimatedWallpaperDetailScreenState
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      onPressed: _isApplying ? null : _applyHome,
+                      onPressed: _isApplying ? null : _apply,
                       icon: _isApplying
                           ? const SizedBox(
                               width: 22,
@@ -268,21 +323,7 @@ class _AnimatedWallpaperDetailScreenState
                               ),
                             )
                           : const Icon(Icons.wallpaper, size: 24),
-                      label: const Text('Establecer fondo animado'),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        side: const BorderSide(color: Colors.white70),
-                      ),
-                      onPressed: _isApplying ? null : _applyLock,
-                      icon: const Icon(Icons.lock_outline, size: 20),
-                      label: const Text('Usar imagen fija en pantalla de bloqueo'),
+                      label: const Text('Aplicar fondo animado'),
                     ),
                   ),
                 ],
