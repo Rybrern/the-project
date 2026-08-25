@@ -414,13 +414,11 @@ class SearchService {
 
     // Get recent searches from analytics
     try {
-      if (_analytics != null) {
-        final recentSearches = await _analytics!.getRecentSearches(limit: limit);
-        for (final search in recentSearches) {
-          final q = search['query'] as String?;
-          if (q != null && q.toLowerCase().startsWith(normalized)) {
-            suggestions.add(q);
-          }
+      final recentSearches = await _analytics.getRecentSearches(limit: limit);
+      for (final search in recentSearches) {
+        final q = search['query'] as String?;
+        if (q != null && q.toLowerCase().startsWith(normalized)) {
+          suggestions.add(q);
         }
       }
     } catch (_) {
@@ -505,12 +503,10 @@ class SearchService {
   /// Records a search in analytics
   Future<void> _recordSearch(String query, int resultCount) async {
     try {
-      if (_analytics != null) {
-        await _analytics!.recordSearch(
-          query: query,
-          resultCount: resultCount,
-        );
-      }
+      await _analytics.recordSearch(
+        query: query,
+        resultCount: resultCount,
+      );
     } catch (_) {
       // Silently ignore analytics errors
     }
