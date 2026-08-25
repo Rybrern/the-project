@@ -44,11 +44,13 @@ class _SearchTabState extends State<SearchTab> {
     final wallpaperDAO = WallpaperDAO(appDatabase);
     final searchIndexDAO = SearchIndexDAO(appDatabase);
     final animatedWallpaperDAO = AnimatedWallpaperDAO(appDatabase);
+    final tagDAO = TagDAO(appDatabase);
 
     _searchService = SearchService(
       searchIndexDAO: searchIndexDAO,
       wallpaperDAO: wallpaperDAO,
       animatedWallpaperDAO: animatedWallpaperDAO,
+      tagDAO: tagDAO,
     );
   }
 
