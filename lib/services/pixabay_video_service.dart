@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../config/media_api_config.dart';
@@ -73,18 +74,42 @@ class PixabayVideoService {
     );
   }
 
-  /// Orden de tiers preferidos según la calidad elegida por el usuario, con
-  /// fallback al siguiente si Pixabay no ofrece ese tier para este video.
+  /// Selecciona el mejor tier disponible según la calidad elegida.
+  ///
+  /// Implementa fallback: si el tier preferido no existe, intenta los siguientes
+  /// en orden de preferencia. NUNCA descarta un video solo porque no tenga el
+  /// tier exacto solicitado. La calidad es una preferencia, no un filtro.
+  ///
+  /// Orden de búsqueda:
+  /// - Calidad equilibrada: small → tiny → medium → large
+  /// - Calidad alta: medium → small → large → tiny
+  /// - Calidad máxima: large → medium → small → tiny
   Map<String, dynamic>? _pickTier(Map<String, dynamic> videos) {
     final preferredOrder = switch (quality) {
-      AnimatedQuality.balanced => const ['small', 'tiny', 'medium'],
-      AnimatedQuality.high => const ['medium', 'small'],
-      AnimatedQuality.maximum => const ['large', 'medium'],
+      AnimatedQuality.balanced => const ['small', 'tiny', 'medium', 'large'],
+      AnimatedQuality.high => const ['medium', 'small', 'large', 'tiny'],
+      AnimatedQuality.maximum => const ['large', 'medium', 'small', 'tiny'],
     };
+
+    // Buscar en orden de preferencia
     for (final tierName in preferredOrder) {
       final tier = videos[tierName];
       if (tier is Map<String, dynamic>) return tier;
     }
+
+    // FALLBACK: Si no encuentra ninguno en preferencias, usar el primero disponible
+    // Esto asegura que NO se descarten videos válidos solo porque no tengan el tier exacto
+    for (final entry in videos.entries) {
+      if (entry.value is Map<String, dynamic>) {
+        debugPrint(
+          'PixabayVideoService: Video no tiene tier preferido para $quality, '
+          'usando fallback: ${entry.key}',
+        );
+        return entry.value as Map<String, dynamic>;
+      }
+    }
+
+    // Solo retorna null si el video está completamente vacío (no debería ocurrir)
     return null;
   }
 }
