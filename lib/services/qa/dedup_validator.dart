@@ -208,7 +208,7 @@ class DedupValidator {
         visualDuplicates: visualDuplicateCount,
         falsePositiveRate: falsePositiveRate,
         falseNegativeRate: falseNegativeRate,
-        avgProcessingTimeMs: avgProcessingTime,
+        avgProcessingTimeMs: avgProcessingTime.toDouble(),
         duplicateGroups: duplicateGroups,
         testedAt: DateTime.now(),
       );
@@ -226,11 +226,12 @@ class DedupValidator {
 
     final hashGroups = <String, List<Wallpaper>>{};
     for (final wallpaper in wallpapers) {
-      if (wallpaper.fileHash != null && wallpaper.fileHash!.isNotEmpty) {
-        if (!hashGroups.containsKey(wallpaper.fileHash)) {
-          hashGroups[wallpaper.fileHash] = [];
+      final hash = wallpaper.fileHash;
+      if (hash != null && hash.isNotEmpty) {
+        if (!hashGroups.containsKey(hash)) {
+          hashGroups[hash] = [];
         }
-        hashGroups[wallpaper.fileHash]!.add(wallpaper);
+        hashGroups[hash]!.add(wallpaper);
       }
     }
 

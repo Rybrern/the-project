@@ -1,4 +1,6 @@
-// QA Services barrel file
+// QA Services barrel file - Comprehensive quality assurance suite
+// This module contains automated testing, performance benchmarking, and monitoring
+
 export 'dedup_validator.dart';
 export 'nsfw_validator.dart';
 export 'tag_validator.dart';
