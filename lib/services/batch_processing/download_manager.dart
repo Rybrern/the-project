@@ -20,7 +20,7 @@ class DownloadManager {
   final _queue = <DownloadTask>[];
 
   /// Descargas actualmente en progreso
-  int _activeDownloads = 0;
+  final int _activeDownloads = 0;
 
   /// Procesa una URL y retorna los bytes si es exitoso
   Future<Uint8List?> download(String url) async {

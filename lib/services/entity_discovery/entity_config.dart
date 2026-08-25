@@ -1,5 +1,6 @@
 /// Configuración de entidades específicas (jugadores, equipos, competiciones).
 /// Permite búsquedas muy específicas sin modificar código.
+library;
 
 /// Entidad deportiva (jugador, equipo, competición)
 class SportEntity {
