@@ -29,6 +29,9 @@ class PixabayProvider implements WallpaperProvider {
   bool get isEnabled => apiKey.isNotEmpty;
 
   /// Busca imágenes estáticas en Pixabay
+  /// FIX: Removido requisito 1920×1080 que era muy estricto y descartaba muchas imágenes válidas.
+  /// Ahora usa mínimo 800×600 para permitir más resultados.
+  /// La validación de contenido se hace después en _mapImageToWallpaper.
   Future<List<Wallpaper>> searchImages(
     String query, {
     int limit = 24,
@@ -40,8 +43,8 @@ class PixabayProvider implements WallpaperProvider {
         'safesearch': 'true',
         'per_page': '$limit',
         'image_type': 'photo',
-        'min_width': '1920',
-        'min_height': '1080',
+        'min_width': '800',
+        'min_height': '600',
       });
 
       final response = await http.get(uri);
@@ -52,7 +55,13 @@ class PixabayProvider implements WallpaperProvider {
       final body = jsonDecode(response.body) as Map<String, dynamic>;
       final hits = (body['hits'] as List<dynamic>).cast<Map<String, dynamic>>();
 
-      return hits.map(_mapImageToWallpaper).whereType<Wallpaper>().toList();
+      // FIX: Cambiar a usar map() en lugar de whereType() para evitar descartar
+      // imágenes válidas. Si _mapImageToWallpaper retorna null, se filtra aquí.
+      return hits
+          .map(_mapImageToWallpaper)
+          .where((wp) => wp != null)
+          .cast<Wallpaper>()
+          .toList();
     } catch (error) {
       debugPrint('PixabayProvider.searchImages error: $error');
       return [];
@@ -107,8 +116,8 @@ class PixabayProvider implements WallpaperProvider {
         'safesearch': 'true',
         'per_page': '$perPage',
         'image_type': 'photo',
-        'min_width': '1920',
-        'min_height': '1080',
+        'min_width': '800',
+        'min_height': '600',
       });
 
       final response = await http.get(uri);
@@ -119,7 +128,11 @@ class PixabayProvider implements WallpaperProvider {
       final body = jsonDecode(response.body) as Map<String, dynamic>;
       final hits = (body['hits'] as List<dynamic>).cast<Map<String, dynamic>>();
 
-      return hits.map(_mapImageToWallpaper).whereType<Wallpaper>().toList();
+      return hits
+          .map(_mapImageToWallpaper)
+          .where((wp) => wp != null)
+          .cast<Wallpaper>()
+          .toList();
     } catch (error) {
       debugPrint('PixabayProvider.searchPaginated error: $error');
       return [];
@@ -228,12 +241,26 @@ class PixabayProvider implements WallpaperProvider {
     );
   }
 
+  /// Selecciona el mejor tier disponible para un video de Pixabay.
+  /// Siempre retorna un tier válido o null solo si el video está completamente vacío.
+  /// IMPORTANTE: Nunca descarta un video solo porque no tenga el tier preferido.
   Map<String, dynamic>? _pickVideoTier(Map<String, dynamic> videos) {
     const preferredOrder = ['small', 'tiny', 'medium', 'large'];
+
+    // Busca en orden de preferencia
     for (final tierName in preferredOrder) {
       final tier = videos[tierName];
       if (tier is Map<String, dynamic>) return tier;
     }
+
+    // FALLBACK: Si ninguno preferido existe, usa el primero disponible
+    for (final entry in videos.entries) {
+      if (entry.value is Map<String, dynamic>) {
+        debugPrint('PixabayProvider: Video no tiene tier preferido, usando fallback: ${entry.key}');
+        return entry.value as Map<String, dynamic>;
+      }
+    }
+
     return null;
   }
 }

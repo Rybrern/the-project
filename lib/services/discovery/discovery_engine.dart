@@ -121,6 +121,10 @@ class DiscoveryEngine {
   }
 
   /// Búsqueda interna en todos los proveedores habilitados
+  /// IMPORTANTE: NO divide el límite entre proveedores.
+  /// Cada proveedor obtiene el límite completo, luego se deduplicA y limita el total.
+  /// Esto permite que ambos proveedores contribuyan plenamente, en lugar de reducir
+  /// artificialmente cada uno a la mitad.
   Future<List<Wallpaper>> _searchAllProviders(
     String query, {
     int limit = 24,
@@ -132,13 +136,13 @@ class DiscoveryEngine {
     }
 
     final results = <Wallpaper>[];
-    final resultsPerProvider = (limit / providers.length).ceil();
+    final seenIds = <String>{};
 
-    // Limita concurrencia
+    // Limita concurrencia: cada proveedor obtiene el límite COMPLETO
     for (var i = 0; i < providers.length; i += maxConcurrentSearches) {
       final batch = providers.skip(i).take(maxConcurrentSearches);
       final futures = batch.map(
-        (p) => p.search(query, limit: resultsPerProvider).catchError(
+        (p) => p.search(query, limit: limit).catchError(
               (e) {
                 debugPrint('DiscoveryEngine: Error in provider "${p.name}": $e');
                 return <Wallpaper>[];
@@ -148,13 +152,18 @@ class DiscoveryEngine {
 
       final batchResults = await Future.wait(futures);
       for (final providerResults in batchResults) {
-        results.addAll(providerResults);
+        // Evita duplicados por ID
+        for (final wallpaper in providerResults) {
+          if (seenIds.add(wallpaper.id)) {
+            results.add(wallpaper);
+          }
+        }
       }
 
       if (results.length >= limit) break;
     }
 
-    // Limita al máximo solicitado
+    // Limita al máximo solicitado (después de deduplicar)
     if (results.length > limit) {
       results.removeRange(limit, results.length);
     }
