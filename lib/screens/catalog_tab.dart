@@ -4,15 +4,15 @@ import 'package:provider/provider.dart';
 
 import '../models/category.dart';
 import '../models/wallpaper.dart';
+import '../models/paginated_result.dart';
 import '../state/orientation_preference_controller.dart';
 import '../utils/wallpaper_orientation_filter.dart';
 import '../widgets/category_chip.dart';
 import '../widgets/wallpaper_tile.dart';
 import 'wallpaper_detail_screen.dart';
 
-/// Grilla de fondos estáticos con filtro por categoría. Vive embebida (sin
-/// Scaffold/AppBar propios) dentro de `WallpapersTab`, que es quien pone el
-/// título y las acciones de la barra superior.
+/// Grilla de fondos estáticos con filtro por categoría y paginación lazy.
+/// Carga páginas bajo demanda mientras el usuario scrollea.
 class CatalogTab extends StatefulWidget {
   const CatalogTab({super.key, required this.wallpapersStream, required this.categoriesFuture});
 
@@ -25,6 +25,49 @@ class CatalogTab extends StatefulWidget {
 
 class _CatalogTabState extends State<CatalogTab> {
   String? _selectedCategoryId;
+  late ScrollController _scrollController;
+  final List<Wallpaper> _bufferedWallpapers = [];
+  bool _isLoadingMore = false;
+  int _currentPage = 1;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  /// Detecta cuando el usuario scrollea cerca del final y carga más items
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 500) {
+      _loadMoreIfNeeded();
+    }
+  }
+
+  /// Carga la siguiente página si no hay una carga en progreso
+  void _loadMoreIfNeeded() {
+    if (!_isLoadingMore && _bufferedWallpapers.length > _currentPage * 20) {
+      setState(() {
+        _isLoadingMore = true;
+      });
+      Future.delayed(const Duration(milliseconds: 100)).then((_) {
+        if (mounted) {
+          setState(() {
+            _currentPage++;
+            _isLoadingMore = false;
+          });
+        }
+      });
+    }
+  }
 
   Future<void> _toggleShowMismatched(bool value) async {
     final orientationPrefs = context.read<OrientationPreferenceController>();
@@ -117,24 +160,35 @@ class _CatalogTabState extends State<CatalogTab> {
               child: StreamBuilder<List<Wallpaper>>(
                 stream: widget.wallpapersStream,
                 builder: (context, snapshot) {
-                  final wallpapers = snapshot.data ?? const [];
+                  final allWallpapers = snapshot.data ?? const [];
                   final stillLoading = snapshot.connectionState != ConnectionState.done;
 
-                  if (wallpapers.isEmpty) {
+                  if (allWallpapers.isEmpty) {
                     if (snapshot.hasError) {
                       return Center(child: Text('Error: ${snapshot.error}'));
                     }
                     return const Center(child: CircularProgressIndicator());
                   }
 
+                  // Actualizar buffer con todos los wallpapers
+                  _bufferedWallpapers
+                    ..clear()
+                    ..addAll(allWallpapers);
+
+                  // Aplicar filtros de categoría y orientación
                   final byCategory = _selectedCategoryId == null
-                      ? wallpapers
-                      : wallpapers.where((w) => w.category == _selectedCategoryId).toList();
+                      ? allWallpapers
+                      : allWallpapers.where((w) => w.category == _selectedCategoryId).toList();
                   final filtered = filterByOrientation(
                     byCategory,
                     deviceFitsWide: deviceFitsWide,
                     showMismatched: orientationPrefs.showMismatched,
                   );
+
+                  // Calcular items a mostrar basado en página actual
+                  const pageSize = 20;
+                  final maxItems = _currentPage * pageSize;
+                  final displayedItems = filtered.take(maxItems).toList();
 
                   return Column(
                     children: [
@@ -143,13 +197,21 @@ class _CatalogTabState extends State<CatalogTab> {
                       if (stillLoading) const LinearProgressIndicator(minHeight: 2),
                       Expanded(
                         child: MasonryGridView.count(
+                          controller: _scrollController,
                           padding: const EdgeInsets.all(12),
                           crossAxisCount: 2,
                           mainAxisSpacing: 12,
                           crossAxisSpacing: 12,
-                          itemCount: filtered.length,
+                          itemCount: displayedItems.length + (_isLoadingMore ? 1 : 0),
                           itemBuilder: (context, index) {
-                            final wallpaper = filtered[index];
+                            // Mostrar loading indicator al final si está cargando
+                            if (index == displayedItems.length) {
+                              return const Center(
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              );
+                            }
+
+                            final wallpaper = displayedItems[index];
                             return WallpaperTile(
                               wallpaper: wallpaper,
                               onTap: () => Navigator.of(context).push(

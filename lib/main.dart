@@ -4,9 +4,12 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'config/wallhaven_config.dart';
+import 'database/app_database.dart';
 import 'screens/home_shell.dart';
 import 'screens/onboarding_screen.dart';
+import 'screens/splash_screen.dart';
 import 'services/ads_service.dart';
+import 'services/database/database_initialization_service.dart';
 import 'services/wallhaven_wallpaper_service.dart';
 import 'state/favorites_controller.dart';
 import 'state/orientation_preference_controller.dart';
@@ -36,7 +39,9 @@ class WallpaperApp extends StatelessWidget {
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
           useMaterial3: true,
         ),
-        home: const _StartupGate(),
+        home: SplashScreen(
+          nextScreen: const _StartupGate(),
+        ),
       ),
     );
   }

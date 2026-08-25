@@ -4,8 +4,9 @@ import '../models/category.dart';
 import '../models/wallpaper.dart';
 import 'animated_wallpapers_tab.dart';
 import 'catalog_tab.dart';
+import 'search_tab.dart';
 
-/// Pantalla "Fondos": un solo AppBar con sub-pestañas Estáticos/Animados,
+/// Pantalla "Fondos": un solo AppBar con sub-pestañas Estáticos/Animados/Búsqueda,
 /// para separar claramente los dos tipos de contenido sin duplicar título ni
 /// barra superior.
 class WallpapersTab extends StatefulWidget {
@@ -19,7 +20,7 @@ class WallpapersTab extends StatefulWidget {
   final Stream<List<Wallpaper>> wallpapersStream;
   final Future<List<WallpaperCategory>> categoriesFuture;
 
-  /// 0 = Estáticos, 1 = Animados. Permite que "Inicio" abra directo en la
+  /// 0 = Estáticos, 1 = Animados, 2 = Búsqueda. Permite que "Inicio" abra directo en la
   /// sub-pestaña que el usuario pidió.
   final int initialTabIndex;
 
@@ -30,7 +31,7 @@ class WallpapersTab extends StatefulWidget {
 class _WallpapersTabState extends State<WallpapersTab>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController = TabController(
-    length: 2,
+    length: 3,
     vsync: this,
     initialIndex: widget.initialTabIndex,
   );
@@ -51,6 +52,7 @@ class _WallpapersTabState extends State<WallpapersTab>
           tabs: const [
             Tab(icon: Icon(Icons.image_outlined), text: 'Estáticos'),
             Tab(icon: Icon(Icons.movie_outlined), text: 'Animados'),
+            Tab(icon: Icon(Icons.search), text: 'Buscar'),
           ],
         ),
       ),
@@ -62,6 +64,7 @@ class _WallpapersTabState extends State<WallpapersTab>
             categoriesFuture: widget.categoriesFuture,
           ),
           const AnimatedWallpapersTab(),
+          const SearchTab(),
         ],
       ),
     );
