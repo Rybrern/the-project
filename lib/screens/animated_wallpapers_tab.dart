@@ -38,12 +38,62 @@ class _AnimatedWallpapersTabState extends State<AnimatedWallpapersTab> {
     return FutureBuilder<List<AnimatedWallpaper>>(
       future: _wallpapersFuture,
       builder: (context, snapshot) {
+        // Manejo de error
+        if (snapshot.hasError) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.error_outline, color: Colors.red, size: 48),
+                const SizedBox(height: 16),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Text(
+                    'Error al cargar fondos animados:\n${snapshot.error}',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      _wallpapersFuture = _load(_loadedForQuality ?? AnimatedQuality.balanced);
+                    });
+                  },
+                  child: const Text('Reintentar'),
+                ),
+              ],
+            ),
+          );
+        }
+
+        // Carga en progreso
         if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
+
         final wallpapers = snapshot.data!;
         if (wallpapers.isEmpty) {
-          return const Center(child: Text('No se pudieron cargar fondos animados.'));
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.image_not_supported_outlined, color: Colors.grey, size: 48),
+                const SizedBox(height: 16),
+                const Text('No se pudieron cargar fondos animados.'),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      _wallpapersFuture = _load(_loadedForQuality ?? AnimatedQuality.balanced);
+                    });
+                  },
+                  child: const Text('Reintentar'),
+                ),
+              ],
+            ),
+          );
         }
 
         return MasonryGridView.count(

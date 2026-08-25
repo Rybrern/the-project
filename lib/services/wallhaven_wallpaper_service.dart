@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 
 import '../models/category.dart';
 import '../models/wallpaper.dart';
+import 'utils/timeout_helper.dart';
 import 'wallpaper_service.dart';
 
 /// Catálogo real de fondos de pantalla vía la API de Wallhaven
@@ -35,8 +36,17 @@ class WallhavenWallpaperService implements WallpaperService {
 
   @override
   Future<List<Wallpaper>> fetchWallpapers() async {
-    final results = await Future.wait(kWallpaperCategories.map(_fetchForCategory));
-    return results.expand((wallpapers) => wallpapers).toList();
+    try {
+      final results = await TimeoutHelper.withTimeout(
+        Future.wait(kWallpaperCategories.map(_fetchForCategory)),
+        timeout: const Duration(seconds: 60),
+        operation: 'Load all wallpaper categories',
+      );
+      return results.expand((wallpapers) => wallpapers).toList();
+    } catch (e) {
+      debugPrint('WallhavenWallpaperService.fetchWallpapers error: $e');
+      return [];
+    }
   }
 
   @override
@@ -46,13 +56,22 @@ class WallhavenWallpaperService implements WallpaperService {
     var remaining = kWallpaperCategories.length;
 
     for (final category in kWallpaperCategories) {
-      _fetchForCategory(category).then((items) {
-        accumulated.addAll(items);
-        remaining--;
-        if (controller.isClosed) return;
-        controller.add(List.unmodifiable(accumulated));
-        if (remaining == 0) controller.close();
-      });
+      _fetchForCategory(category).then(
+        (items) {
+          if (controller.isClosed) return;
+          accumulated.addAll(items);
+          remaining--;
+          controller.add(List.unmodifiable(accumulated));
+          if (remaining == 0) controller.close();
+        },
+        onError: (error) {
+          debugPrint('Error fetching ${category.query}: $error');
+          remaining--;
+          if (!controller.isClosed && remaining == 0) {
+            controller.close();
+          }
+        },
+      );
     }
 
     return controller.stream;
@@ -72,7 +91,11 @@ class WallhavenWallpaperService implements WallpaperService {
         if (category.ratios != null) 'ratios': category.ratios!,
       });
 
-      final response = await http.get(uri);
+      final response = await TimeoutHelper.withTimeout(
+        http.get(uri),
+        timeout: const Duration(seconds: 15),
+        operation: 'Wallhaven category: ${category.query}',
+      );
       if (response.statusCode != 200) {
         throw Exception('Wallhaven devolvió ${response.statusCode} para "${category.query}"');
       }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../database/app_database.dart';
 import '../services/database/database_initialization_service.dart';
+import '../services/utils/timeout_helper.dart';
 
 /// Pantalla de Splash que inicializa la base de datos
 /// Muestra progreso mientras seedea tags y aliases
@@ -35,12 +36,19 @@ class _SplashScreenState extends State<SplashScreen> {
 
       _updateStatus('Creando tablas...');
       final appDb = AppDatabase();
-      // La conexión a BD ya crea/migra automáticamente
-      await appDb.database;
+      await TimeoutHelper.withTimeout(
+        appDb.database,
+        timeout: const Duration(seconds: 30),
+        operation: 'Database connection',
+      );
 
       _updateStatus('Poblando tags...');
       final initService = DatabaseInitializationService(appDb);
-      await initService.initialize();
+      await TimeoutHelper.withTimeout(
+        initService.initialize(),
+        timeout: const Duration(seconds: 60),
+        operation: 'Database initialization and seeding',
+      );
 
       _updateStatus('Completado');
       await Future.delayed(const Duration(milliseconds: 500));

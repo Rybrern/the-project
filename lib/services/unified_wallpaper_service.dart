@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../models/category.dart';
 import '../models/category_hierarchy.dart';
 import '../models/wallpaper.dart';
+import 'utils/timeout_helper.dart';
 import 'wallpaper_service.dart';
 import 'providers/providers.dart';
 import 'discovery/discovery.dart';
@@ -43,10 +44,17 @@ class UnifiedWallpaperService implements WallpaperService {
 
   @override
   Future<List<Wallpaper>> fetchWallpapers() async {
-    final results = await Future.wait(
-      kWallpaperCategories.map(_fetchForCategory),
-    );
-    return results.expand((wallpapers) => wallpapers).toList();
+    try {
+      final results = await TimeoutHelper.withTimeout(
+        Future.wait(kWallpaperCategories.map(_fetchForCategory)),
+        timeout: const Duration(seconds: 60),
+        operation: 'Load all wallpaper categories (unified)',
+      );
+      return results.expand((wallpapers) => wallpapers).toList();
+    } catch (e) {
+      debugPrint('UnifiedWallpaperService.fetchWallpapers error: $e');
+      return [];
+    }
   }
 
   @override
@@ -56,13 +64,22 @@ class UnifiedWallpaperService implements WallpaperService {
     var remaining = kWallpaperCategories.length;
 
     for (final category in kWallpaperCategories) {
-      _fetchForCategory(category).then((items) {
-        accumulated.addAll(items);
-        remaining--;
-        if (controller.isClosed) return;
-        controller.add(List.unmodifiable(accumulated));
-        if (remaining == 0) controller.close();
-      });
+      _fetchForCategory(category).then(
+        (items) {
+          if (controller.isClosed) return;
+          accumulated.addAll(items);
+          remaining--;
+          controller.add(List.unmodifiable(accumulated));
+          if (remaining == 0) controller.close();
+        },
+        onError: (error) {
+          debugPrint('Error fetching ${category.id}: $error');
+          remaining--;
+          if (!controller.isClosed && remaining == 0) {
+            controller.close();
+          }
+        },
+      );
     }
 
     return controller.stream;

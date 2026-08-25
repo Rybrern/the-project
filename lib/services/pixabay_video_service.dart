@@ -6,6 +6,7 @@ import '../config/media_api_config.dart';
 import '../models/animated_wallpaper.dart';
 import '../state/quality_settings_controller.dart';
 import '../utils/wallpaper_content_filter.dart';
+import 'utils/timeout_helper.dart';
 
 /// Catálogo de videos de Pixabay (https://pixabay.com/api/docs/#api_search_videos)
 /// para usar como fondos de pantalla animados. Todo el contenido de video de
@@ -32,7 +33,11 @@ class PixabayVideoService {
       'per_page': '$_perPage',
     });
 
-    final response = await http.get(uri);
+    final response = await TimeoutHelper.withTimeout(
+      http.get(uri),
+      timeout: const Duration(seconds: 15),
+      operation: 'Pixabay Video Search: $query',
+    );
     if (response.statusCode != 200) {
       throw Exception('Pixabay devolvió ${response.statusCode} para "$query"');
     }
