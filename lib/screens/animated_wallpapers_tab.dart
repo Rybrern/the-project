@@ -1,15 +1,14 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
-import 'package:provider/provider.dart';
 
 import '../models/animated_wallpaper.dart';
-import '../services/pixabay_video_service.dart';
-import '../state/quality_settings_controller.dart';
+import '../services/image_loading/robust_image_loader.dart';
+import '../services/search/remote_animated_service.dart';
 import 'animated_wallpaper_detail_screen.dart';
 
-/// Grilla de fondos animados (Pixabay Video). Vive embebida (sin
-/// Scaffold/AppBar propios) dentro de `WallpapersTab`.
+/// Grilla de fondos animados. Catálogo desde Firestore (Pixabay Video +
+/// GIPHY, actualizado por la Cloud Function de ingesta). Vive embebida
+/// (sin Scaffold/AppBar propios) dentro de `WallpapersTab`.
 class AnimatedWallpapersTab extends StatefulWidget {
   const AnimatedWallpapersTab({super.key});
 
@@ -18,23 +17,22 @@ class AnimatedWallpapersTab extends StatefulWidget {
 }
 
 class _AnimatedWallpapersTabState extends State<AnimatedWallpapersTab> {
-  Future<List<AnimatedWallpaper>>? _wallpapersFuture;
-  AnimatedQuality? _loadedForQuality;
+  late Future<List<AnimatedWallpaper>> _wallpapersFuture;
 
-  Future<List<AnimatedWallpaper>> _load(AnimatedQuality quality) =>
-      PixabayVideoService(quality: quality).trending();
+  @override
+  void initState() {
+    super.initState();
+    _wallpapersFuture = RemoteAnimatedService().trending();
+  }
+
+  void _retry() {
+    setState(() {
+      _wallpapersFuture = RemoteAnimatedService().trending();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    final quality = context.watch<QualitySettingsController>().animatedQuality;
-    // Solo se vuelve a pedir el catálogo si la calidad elegida cambió (o es
-    // la primera carga); cambiar de sub-tab y volver no debería relanzar el
-    // fetch con la misma calidad de siempre.
-    if (_loadedForQuality != quality) {
-      _loadedForQuality = quality;
-      _wallpapersFuture = _load(quality);
-    }
-
     return FutureBuilder<List<AnimatedWallpaper>>(
       future: _wallpapersFuture,
       builder: (context, snapshot) {
@@ -56,11 +54,7 @@ class _AnimatedWallpapersTabState extends State<AnimatedWallpapersTab> {
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      _wallpapersFuture = _load(_loadedForQuality ?? AnimatedQuality.balanced);
-                    });
-                  },
+                  onPressed: _retry,
                   child: const Text('Reintentar'),
                 ),
               ],
@@ -84,11 +78,7 @@ class _AnimatedWallpapersTabState extends State<AnimatedWallpapersTab> {
                 const Text('No se pudieron cargar fondos animados.'),
                 const SizedBox(height: 16),
                 ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      _wallpapersFuture = _load(_loadedForQuality ?? AnimatedQuality.balanced);
-                    });
-                  },
+                  onPressed: _retry,
                   child: const Text('Reintentar'),
                 ),
               ],
@@ -136,8 +126,10 @@ class _AnimatedWallpaperTile extends StatelessWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              CachedNetworkImage(
-                imageUrl: wallpaper.previewImageUrl,
+              RobustImageLoader(
+                thumbnailUrl: wallpaper.previewImageUrl,
+                previewUrl: wallpaper.previewVideoUrl,
+                fullUrl: wallpaper.videoUrl,
                 fit: BoxFit.cover,
               ),
               Positioned(

@@ -38,6 +38,7 @@ dependencies:
   # Networking and image loading/caching for the wallpaper gallery.
   http: ^1.2.2
   cached_network_image: ^3.4.1
+  flutter_cache_manager: ^3.4.2
 
   # State management, layout, and device integrations for the full experience.
   provider: ^6.1.5+1
@@ -52,6 +53,7 @@ dependencies:
   google_mobile_ads: ^9.1.0
   shared_preferences: ^2.3.4
   firebase_core: ^3.15.2
+  cloud_firestore: ^5.6.5
 
   # Vista previa en loop de fondos animados (Pixabay Video / Giphy).
   video_player: ^2.9.5

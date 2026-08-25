@@ -20,11 +20,20 @@ class UnifiedWallpaperService implements WallpaperService {
     required String wallhavenApiKey,
     required String pixabayApiKey,
     String? unsplashAccessKey,
+    String? giphyApiKey,
   }) {
+    // Claves placeholder sin reemplazar por una key real nunca deben
+    // habilitar el proveedor: el registry solo mira si el string está
+    // vacío, así que un "YOUR_..._KEY" pasaría el check y el provider
+    // fallaría en cada request con 401.
+    final cleanUnsplashKey = _isPlaceholder(unsplashAccessKey) ? '' : unsplashAccessKey;
+    final cleanGiphyKey = _isPlaceholder(giphyApiKey) ? '' : giphyApiKey;
+
     _registry.initializeDefaults(
       wallhavenApiKey: wallhavenApiKey,
       pixabayApiKey: pixabayApiKey,
-      unsplashAccessKey: unsplashAccessKey,
+      unsplashAccessKey: cleanUnsplashKey,
+      giphyApiKey: cleanGiphyKey,
     );
     _discoveryEngine = DiscoveryEngine(registry: _registry);
     _discoveryEngine.initialize(kWallpaperCategories.map((c) => _convertCategory(c)).toList());
@@ -32,6 +41,11 @@ class UnifiedWallpaperService implements WallpaperService {
 
   final _registry = ProviderRegistry();
   late final DiscoveryEngine _discoveryEngine;
+
+  static bool _isPlaceholder(String? key) {
+    if (key == null || key.isEmpty) return true;
+    return key.startsWith('YOUR_') || key.contains('YOUR_');
+  }
 
   /// Obtiene acceso directo al ProviderRegistry
   ProviderRegistry get registry => _registry;

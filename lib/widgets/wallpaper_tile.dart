@@ -1,8 +1,8 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/wallpaper.dart';
+import '../services/image_loading/robust_image_loader.dart';
 import '../state/favorites_controller.dart';
 
 class WallpaperTile extends StatelessWidget {
@@ -25,14 +25,16 @@ class WallpaperTile extends StatelessWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              CachedNetworkImage(
-                imageUrl: wallpaper.thumbnailUrl,
+              RobustImageLoader(
+                thumbnailUrl: wallpaper.thumbnailUrl,
+                previewUrl: wallpaper.previewUrl,
+                fullUrl: wallpaper.fullUrl,
                 fit: BoxFit.cover,
-                placeholder: (context, url) => const ColoredBox(
+                placeholder: const ColoredBox(
                   color: Color(0xFFE0E0E0),
                   child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
                 ),
-                errorWidget: (context, url, error) => const ColoredBox(
+                errorWidget: const ColoredBox(
                   color: Color(0xFFE0E0E0),
                   child: Icon(Icons.broken_image_outlined),
                 ),

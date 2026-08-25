@@ -11,11 +11,13 @@ class SearchIndexStage implements PipelineStage {
     required this.wallpaperDAO,
     required this.searchIndexDAO,
     required this.tagDAO,
+    required this.tagRelationDAO,
   });
 
   final WallpaperDAO wallpaperDAO;
   final SearchIndexDAO searchIndexDAO;
   final TagDAO tagDAO;
+  final TagRelationDAO tagRelationDAO;
 
   @override
   String get name => 'search_index';
@@ -56,6 +58,7 @@ class SearchIndexStage implements PipelineStage {
           wallpaperDAO: wallpaperDAO,
           animatedWallpaperDAO: null as dynamic,
           tagDAO: tagDAO,
+          tagRelationDAO: tagRelationDAO,
         );
 
         // Indexar categoría

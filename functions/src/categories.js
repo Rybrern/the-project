@@ -1,0 +1,57 @@
+// Portado de lib/models/default_categories.dart: cada entrada de este
+// árbol tiene su propia lista de `discoveryQueries` (términos de búsqueda
+// reales, no el id de la categoría — "Messi", "Real Madrid", etc.). Antes
+// se usaba el id como query ("futbol-jugadores"), lo cual no es un término
+// de búsqueda válido para ningún proveedor y explica por qué "messi" no
+// encontraba nada.
+const CATEGORY_QUERIES = [
+  { id: 'naturaleza', queries: ['nature', 'landscape', 'forest', 'mountain', 'nature wallpaper', 'landscape wallpaper', 'natural scenery'] },
+  { id: 'paisajes-nocturnos', queries: ['night landscape', 'night sky', 'starry night', 'night scenery'] },
+  { id: 'espacio', queries: ['space', 'galaxy', 'astronaut', 'planet', 'cosmic', 'space wallpaper', 'universe'] },
+  { id: 'abstracto', queries: ['abstract', 'abstract art', 'modern art', 'geometric'] },
+  { id: 'minimalista', queries: ['minimal', 'minimalist', 'simple', 'clean design'] },
+  { id: 'arquitectura', queries: ['architecture', 'building', 'city', 'urban', 'skyscraper'] },
+  { id: 'animales', queries: ['animals', 'wildlife', 'dog', 'cat', 'bird', 'nature'] },
+  { id: 'oscuro', queries: ['dark', 'black', 'dark background', 'dark wallpaper'] },
+  { id: 'arte', queries: ['art', 'artwork', 'painting', 'drawing', 'illustration'] },
+  { id: 'autos-motos', queries: ['car', 'motorcycle', 'auto', 'vehicle', 'sports car', 'classic car', 'car wallpaper'] },
+  { id: 'futbol', queries: ['football', 'soccer', 'soccer wallpaper', 'football wallpaper'] },
+  { id: 'futbol-jugadores', queries: ['Messi', 'Ronaldo', 'Mbappé', 'Haaland', 'Neymar', 'Lewandowski', 'Benzema', 'player football'] },
+  { id: 'futbol-equipos', queries: ['Real Madrid', 'Barcelona', 'Manchester City', 'Liverpool', 'Bayern Munich', 'PSG', 'Juventus', 'Chelsea', 'Arsenal', 'AC Milan'] },
+  { id: 'futbol-competiciones', queries: ['Champions League', 'La Liga', 'Premier League', 'Serie A', 'Bundesliga', 'Ligue 1', 'Copa del Mundo', 'Eurocopa'] },
+  { id: 'motor', queries: ['motorsport', 'racing', 'race car'] },
+  { id: 'f1', queries: ['F1', 'Formula 1', 'Formula One', 'Lewis Hamilton', 'Max Verstappen', 'Fernando Alonso', 'Charles Leclerc', 'Lando Norris'] },
+  { id: 'f2', queries: ['F2', 'Formula 2', 'Formula 2 racing'] },
+  { id: 'motogp', queries: ['MotoGP', 'Moto GP', 'motorcycle racing', 'Marc Márquez', 'Jorge Lorenzo', 'Valentino Rossi'] },
+  { id: 'moto2', queries: ['Moto2', 'Moto 2'] },
+  { id: 'motocross', queries: ['motocross', 'dirt bike', 'cross racing'] },
+  { id: 'nascar', queries: ['NASCAR', 'stock car', 'american racing'] },
+  { id: 'wrc', queries: ['rally', 'WRC', 'World Rally Championship', 'rallycar'] },
+  { id: 'wec', queries: ['WEC', 'Le Mans', 'endurance racing', '24 hours'] },
+  { id: 'basquetbol', queries: ['basketball', 'NBA', 'Lebron James', 'Michael Jordan', 'Giannis Antetokounmpo', 'Luka Doncic'] },
+  { id: 'tenis', queries: ['tennis', 'Wimbledon', 'US Open', 'Djokovic', 'Federer'] },
+  { id: 'americano', queries: ['NFL', 'American football', 'football', 'NFL quarterback'] },
+  { id: 'beisbol', queries: ['baseball', 'MLB', 'major league baseball'] },
+  { id: 'hockey', queries: ['hockey', 'NHL', 'ice hockey'] },
+  { id: 'rugby', queries: ['rugby', 'rugby union', 'rugby league'] },
+  { id: 'golf', queries: ['golf', 'PGA', 'master golf', 'golfer'] },
+  { id: 'ciclismo', queries: ['cycling', 'Tour de France', 'cyclist', 'bike racing'] },
+  { id: 'atletismo', queries: ['athletics', 'track and field', 'running', 'olympics'] },
+  { id: 'natacion', queries: ['swimming', 'swimmer', 'olympic swimming'] },
+  { id: 'boxeo', queries: ['boxing', 'boxer', 'heavyweight', 'boxing championship'] },
+  { id: 'mma', queries: ['MMA', 'UFC', 'mixed martial arts', 'fighting', 'Conor McGregor'] },
+  { id: 'voleibol', queries: ['volleyball', 'beach volleyball'] },
+  { id: 'surf', queries: ['surfing', 'surfer', 'waves', 'beach surf'] },
+  { id: 'skateboarding', queries: ['skateboard', 'skateboarding', 'skater'] },
+  { id: 'otros-deportes', queries: ['sports', 'athlete', 'athletic', 'competition'] },
+  { id: 'celebridades', queries: ['celebrity', 'actor', 'actress', 'musician', 'portrait'] },
+  { id: 'peliculas-series', queries: ['movie', 'film', 'cinema', 'TV series', 'netflix', 'movie poster'] },
+  { id: 'anime', queries: ['anime', 'manga', 'japanese animation', 'anime girl', 'anime boy'] },
+  { id: 'videojuegos', queries: ['video games', 'gaming', 'game', 'esports', 'gaming wallpaper'] },
+  { id: 'ciencia-ficcion', queries: ['sci-fi', 'science fiction', 'futuristic', 'space travel', 'sci-fi wallpaper'] },
+  { id: 'fantasia', queries: ['fantasy', 'dragon', 'magic', 'wizard', 'fantasy art'] },
+  { id: 'tecnologia', queries: ['technology', 'tech', 'AI', 'robot', 'digital', 'coding'] },
+  { id: 'tablets', queries: ['landscape', 'widescreen', 'panorama'] },
+];
+
+module.exports = { CATEGORY_QUERIES };

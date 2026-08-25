@@ -1,16 +1,19 @@
+import 'dart:async';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'config/wallhaven_config.dart';
+import 'config/media_api_config.dart';
 import 'database/app_database.dart';
 import 'screens/home_shell.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/splash_screen.dart';
 import 'services/ads_service.dart';
 import 'services/database/database_initialization_service.dart';
-import 'services/wallhaven_wallpaper_service.dart';
+import 'services/unified_wallpaper_service.dart';
 import 'state/favorites_controller.dart';
 import 'state/orientation_preference_controller.dart';
 import 'state/quality_settings_controller.dart';
@@ -19,6 +22,12 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   AdsService.instance.initialize();
+  // Seedea taxonomía de tags/aliases en la BD local (idempotente, no
+  // reescribe si ya existen). No bloquea el arranque: la búsqueda solo
+  // la necesita cuando el usuario abre esa pestaña.
+  unawaited(
+    DatabaseInitializationService(AppDatabase()).initialize(),
+  );
   runApp(const WallpaperApp());
 }
 
@@ -76,7 +85,14 @@ class _StartupGateState extends State<_StartupGate> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     if (_onboardingComplete == true) {
-      return HomeShell(wallpaperService: WallhavenWallpaperService(apiKey: wallhavenApiKey));
+      return HomeShell(
+        wallpaperService: UnifiedWallpaperService(
+          wallhavenApiKey: wallhavenApiKey,
+          pixabayApiKey: pixabayApiKey,
+          unsplashAccessKey: unsplashAccessKey,
+          giphyApiKey: giphyApiKey,
+        ),
+      );
     }
     return OnboardingScreen(onFinished: () => setState(() => _onboardingComplete = true));
   }

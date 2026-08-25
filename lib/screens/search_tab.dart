@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:provider/provider.dart';
 
-import '../database/app_database.dart';
-import '../database/daos/daos.dart';
 import '../models/wallpaper.dart';
-import '../services/search/search_service.dart';
+import '../services/search/remote_search_service.dart';
 import '../state/orientation_preference_controller.dart';
 import '../utils/wallpaper_orientation_filter.dart';
 import '../widgets/wallpaper_tile.dart';
@@ -20,7 +18,7 @@ class SearchTab extends StatefulWidget {
 }
 
 class _SearchTabState extends State<SearchTab> {
-  late SearchService _searchService;
+  final _searchService = RemoteSearchService();
   late TextEditingController _searchController;
   List<Wallpaper> _searchResults = [];
   bool _isSearching = false;
@@ -30,28 +28,12 @@ class _SearchTabState extends State<SearchTab> {
   void initState() {
     super.initState();
     _searchController = TextEditingController();
-    _initializeSearchService();
   }
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
-  }
-
-  void _initializeSearchService() {
-    final appDatabase = AppDatabase();
-    final wallpaperDAO = WallpaperDAO(appDatabase);
-    final searchIndexDAO = SearchIndexDAO(appDatabase);
-    final animatedWallpaperDAO = AnimatedWallpaperDAO(appDatabase);
-    final tagDAO = TagDAO(appDatabase);
-
-    _searchService = SearchService(
-      searchIndexDAO: searchIndexDAO,
-      wallpaperDAO: wallpaperDAO,
-      animatedWallpaperDAO: animatedWallpaperDAO,
-      tagDAO: tagDAO,
-    );
   }
 
   /// Realiza búsqueda con debouncing
@@ -75,12 +57,7 @@ class _SearchTabState extends State<SearchTab> {
     setState(() => _isSearching = true);
 
     try {
-      // Intentar búsqueda exacta primero, luego fuzzy
-      var results = await _searchService.searchExact(query);
-
-      if (results.isEmpty) {
-        results = await _searchService.searchFuzzy(query);
-      }
+      final results = await _searchService.search(query);
 
       if (mounted) {
         setState(() {

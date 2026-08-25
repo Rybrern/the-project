@@ -1,0 +1,29 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "wallpapers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "category", "order": "ASCENDING" },
+        { "fieldPath": "popularityScore", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "wallpapers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tags", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "popularityScore", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "wallpapers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "isAnimated", "order": "ASCENDING" },
+        { "fieldPath": "popularityScore", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
