@@ -180,6 +180,29 @@ class WallpaperDAO {
           : null,
       processingStatus: map['processing_status'] as String?,
       rejectionReason: map['rejection_reason'] as String?,
+      // previewUrl se cargaría desde resolutions[type='preview']
+      // resolutions se cargarían por separado via WallpaperResolutionDAO
     );
+  }
+
+  /// Carga resolutions de un wallpaper
+  Future<List<WallpaperResolution>> getResolutions(String wallpaperId) async {
+    final db = await _appDatabase.database;
+    final maps = await db.query(
+      'wallpaper_resolutions',
+      where: 'wallpaper_id = ?',
+      whereArgs: [wallpaperId],
+      orderBy: 'resolution_type DESC',
+    );
+    return maps.map((map) => WallpaperResolution.fromMap(map)).toList();
+  }
+
+  /// Carga un wallpaper con todas sus resoluciones
+  Future<Wallpaper?> getByIdWithResolutions(String id) async {
+    final wallpaper = await getById(id);
+    if (wallpaper == null) return null;
+
+    final resolutions = await getResolutions(id);
+    return wallpaper.copyWith(resolutions: resolutions);
   }
 }

@@ -10,11 +10,16 @@ import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../database/daos/daos.dart';
+import '../database/app_database.dart';
 import '../models/wallpaper.dart';
 import '../services/ads_service.dart';
+import '../services/utils/progressive_url_selector.dart';
+import '../services/utils/timeout_helper.dart';
 import '../state/favorites_controller.dart';
 import '../state/quality_settings_controller.dart';
 import '../utils/wallpaper_image_processor.dart';
+import '../services/image_loading/progressive_image_loader.dart';
 import '../widgets/pannable_wallpaper_preview.dart';
 import '../widgets/wallpaper_target_sheet.dart';
 import 'wallpaper_crop_screen.dart';
@@ -59,7 +64,23 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
         return;
       }
 
-      final response = await http.get(Uri.parse(widget.wallpaper.fullUrl));
+      // Cargar resolutions para seleccionar URL según calidad
+      final appDb = AppDatabase();
+      final wallpaperDAO = WallpaperDAO(appDb);
+      final resolutions = await wallpaperDAO.getResolutions(widget.wallpaper.id);
+
+      final quality = context.read<QualitySettingsController>().imageQuality;
+      final downloadUrl = ProgressiveUrlSelector.selectUrlByQuality(
+        widget.wallpaper,
+        resolutions.isNotEmpty ? resolutions : null,
+        quality,
+      );
+
+      final response = await TimeoutHelper.withTimeout(
+        http.get(Uri.parse(downloadUrl ?? widget.wallpaper.fullUrl)),
+        timeout: const Duration(seconds: 30),
+        operation: 'Download wallpaper for gallery',
+      );
       if (response.statusCode != 200) {
         _showMessage('No se pudo descargar la imagen.');
         return;
@@ -70,8 +91,8 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
         name: 'wallpaper_${widget.wallpaper.id}',
       );
       _showMessage('Fondo de pantalla guardado en la galería.');
-    } catch (_) {
-      _showMessage('No se pudo guardar la imagen.');
+    } catch (e) {
+      _showMessage('No se pudo guardar la imagen: $e');
     } finally {
       if (mounted) setState(() => _isDownloading = false);
     }
@@ -93,9 +114,8 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
     // de un gap asíncrono si el widget llegó a desmontarse.
     final screenSize = MediaQuery.sizeOf(context);
     final targetAspectRatio = screenSize.width / screenSize.height;
-    final qualityParams = imageQualityParams(
-      context.read<QualitySettingsController>().imageQuality,
-    );
+    final quality = context.read<QualitySettingsController>().imageQuality;
+    final qualityParams = imageQualityParams(quality);
 
     setState(() => _isApplying = true);
     try {
@@ -115,7 +135,22 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
       final shouldCrop =
           cropAlignment != null || widget.wallpaper.forcePortraitCrop;
       if (shouldCrop) {
-        final response = await http.get(Uri.parse(widget.wallpaper.fullUrl));
+        // Cargar resolutions para seleccionar URL según calidad
+        final appDb = AppDatabase();
+        final wallpaperDAO = WallpaperDAO(appDb);
+        final resolutions = await wallpaperDAO.getResolutions(widget.wallpaper.id);
+
+        final downloadUrl = ProgressiveUrlSelector.selectUrlByQuality(
+          widget.wallpaper,
+          resolutions.isNotEmpty ? resolutions : null,
+          quality,
+        );
+
+        final response = await TimeoutHelper.withTimeout(
+          http.get(Uri.parse(downloadUrl ?? widget.wallpaper.fullUrl)),
+          timeout: const Duration(seconds: 30),
+          operation: 'Download wallpaper for crop',
+        );
         if (response.statusCode != 200) {
           _showMessage('No se pudo descargar la imagen.');
           return;
@@ -158,8 +193,8 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
             ? 'Fondo de pantalla aplicado.'
             : 'No se pudo aplicar el fondo de pantalla.',
       );
-    } catch (_) {
-      _showMessage('No se pudo aplicar el fondo de pantalla.');
+    } catch (e) {
+      _showMessage('No se pudo aplicar el fondo: $e');
     } finally {
       if (mounted) setState(() => _isApplying = false);
     }
