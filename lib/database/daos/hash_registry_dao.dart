@@ -76,6 +76,24 @@ class HashRegistryDAO {
     return maps.first['wallpaper_id'] as String;
   }
 
+  /// Obtiene todos los pHashes registrados para comparación contra duplicados
+  /// Usado en DedupStage para detectar duplicados perceptuales
+  Future<List<String>> getSimilarPerceptualHashes(String perceptualHash) async {
+    final db = await _appDatabase.database;
+
+    // Obtiene todos los pHashes no-null de la BD
+    final maps = await db.query(
+      'hash_registry',
+      where: 'perceptual_hash IS NOT NULL',
+      columns: ['perceptual_hash'],
+      distinct: true,
+    );
+
+    return maps
+        .map((m) => m['perceptual_hash'] as String)
+        .toList();
+  }
+
   /// Obtiene todos los hashes de un wallpaper específico
   Future<Map<String, dynamic>> getHashesByWallpaperId(String wallpaperId) async {
     final db = await _appDatabase.database;

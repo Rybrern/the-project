@@ -41,6 +41,7 @@ void ingestionExample() async {
   registry.initializeDefaults(
     wallhavenApiKey: wallhavenApiKey,
     pixabayApiKey: pixabayApiKey,
+    unsplashAccessKey: unsplashAccessKey,
   );
 
   final discoveryEngine = DiscoveryEngine(registry: registry);
@@ -141,6 +142,7 @@ void simpleIngestionExample() async {
   registry.initializeDefaults(
     wallhavenApiKey: wallhavenApiKey,
     pixabayApiKey: pixabayApiKey,
+    unsplashAccessKey: unsplashAccessKey,
   );
 
   final discoveryEngine = DiscoveryEngine(registry: registry);

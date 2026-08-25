@@ -2,6 +2,9 @@ import 'package:flutter/foundation.dart';
 import 'provider_base.dart';
 import 'wallhaven_provider.dart';
 import 'pixabay_provider.dart';
+import 'giphy_provider.dart';
+import 'unsplash_provider.dart';
+import 'openverse_provider.dart';
 
 /// Registro centralizado de todos los proveedores disponibles.
 /// Gestiona la habilitación, prioridades y acceso a proveedores.
@@ -21,6 +24,8 @@ class ProviderRegistry {
   void initializeDefaults({
     required String wallhavenApiKey,
     required String pixabayApiKey,
+    String? unsplashAccessKey,
+    String? giphyApiKey,
   }) {
     register(
       WallhavenProvider(apiKey: wallhavenApiKey),
@@ -29,6 +34,18 @@ class ProviderRegistry {
     register(
       PixabayProvider(apiKey: pixabayApiKey),
       enabled: pixabayApiKey.isNotEmpty,
+    );
+    register(
+      GiphyProvider(apiKey: giphyApiKey ?? ''),
+      enabled: (giphyApiKey ?? '').isNotEmpty,
+    );
+    register(
+      UnsplashProvider(accessKey: unsplashAccessKey ?? ''),
+      enabled: (unsplashAccessKey ?? '').isNotEmpty,
+    );
+    register(
+      OpenVerseProvider(),
+      enabled: true, // OpenVerse is free and doesn't require API key
     );
   }
 

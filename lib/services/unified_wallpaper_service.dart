@@ -19,10 +19,12 @@ class UnifiedWallpaperService implements WallpaperService {
   UnifiedWallpaperService({
     required String wallhavenApiKey,
     required String pixabayApiKey,
+    String? unsplashAccessKey,
   }) {
     _registry.initializeDefaults(
       wallhavenApiKey: wallhavenApiKey,
       pixabayApiKey: pixabayApiKey,
+      unsplashAccessKey: unsplashAccessKey,
     );
     _discoveryEngine = DiscoveryEngine(registry: _registry);
     _discoveryEngine.initialize(kWallpaperCategories.map((c) => _convertCategory(c)).toList());
