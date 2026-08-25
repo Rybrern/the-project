@@ -1,6 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 import '../../models/wallpaper.dart';
 import '../app_database.dart';
+import 'wallpaper_resolution_dao.dart';
 
 class WallpaperDAO {
   final AppDatabase _appDatabase;
