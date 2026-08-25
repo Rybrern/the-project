@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 
 import '../models/category.dart';
 import '../models/wallpaper.dart';
-import '../models/paginated_result.dart';
 import '../state/orientation_preference_controller.dart';
 import '../utils/wallpaper_orientation_filter.dart';
 import '../widgets/category_chip.dart';
@@ -14,9 +13,15 @@ import 'wallpaper_detail_screen.dart';
 /// Grilla de fondos estáticos con filtro por categoría y paginación lazy.
 /// Carga páginas bajo demanda mientras el usuario scrollea.
 class CatalogTab extends StatefulWidget {
-  const CatalogTab({super.key, required this.wallpapersStream, required this.categoriesFuture});
+  const CatalogTab({super.key, required this.wallpapersFuture, required this.categoriesFuture});
 
-  final Stream<List<Wallpaper>> wallpapersStream;
+  // IMPORTANTE: recibe el Future YA CREADO por HomeShell (única suscripción a
+  // `stream.last`), en vez de un Stream propio. Un broadcast stream no
+  // bufferea eventos: cualquier segunda suscripción hecha aquí (p.ej. con
+  // `stream.last` otra vez) puede llegar tarde y no recibir nada, lo que
+  // producía "Bad state: No element". Reutilizar el mismo Future evita crear
+  // una segunda suscripción por completo.
+  final Future<List<Wallpaper>> wallpapersFuture;
   final Future<List<WallpaperCategory>> categoriesFuture;
 
   @override
@@ -106,10 +111,24 @@ class _CatalogTabState extends State<CatalogTab> {
     final deviceFitsWide = deviceFitsWideWallpapers(context);
     final orientationPrefs = context.watch<OrientationPreferenceController>();
 
-    return FutureBuilder<List<WallpaperCategory>>(
-      future: widget.categoriesFuture,
-      builder: (context, categorySnapshot) {
-        final categories = categorySnapshot.data ?? const [];
+    return FutureBuilder<List<Object>>(
+      future: Future.wait([widget.categoriesFuture, widget.wallpapersFuture]),
+      builder: (context, snapshot) {
+        final categories = (snapshot.data?[0] as List<WallpaperCategory>?) ?? const [];
+        final allWallpapers = (snapshot.data?[1] as List<Wallpaper>?) ?? const [];
+
+        if (allWallpapers.isEmpty && snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        }
+
+        // Actualizar buffer con todos los wallpapers
+        _bufferedWallpapers
+          ..clear()
+          ..addAll(allWallpapers);
 
         return Column(
           children: [
@@ -157,23 +176,11 @@ class _CatalogTabState extends State<CatalogTab> {
               ),
             ),
             Expanded(
-              child: StreamBuilder<List<Wallpaper>>(
-                stream: widget.wallpapersStream,
-                builder: (context, snapshot) {
-                  final allWallpapers = snapshot.data ?? const [];
-                  final stillLoading = snapshot.connectionState != ConnectionState.done;
-
+              child: Builder(
+                builder: (context) {
                   if (allWallpapers.isEmpty) {
-                    if (snapshot.hasError) {
-                      return Center(child: Text('Error: ${snapshot.error}'));
-                    }
-                    return const Center(child: CircularProgressIndicator());
+                    return const Center(child: Text('No hay fondos disponibles'));
                   }
-
-                  // Actualizar buffer con todos los wallpapers
-                  _bufferedWallpapers
-                    ..clear()
-                    ..addAll(allWallpapers);
 
                   // Aplicar filtros de categoría y orientación
                   final byCategory = _selectedCategoryId == null
@@ -190,40 +197,31 @@ class _CatalogTabState extends State<CatalogTab> {
                   final maxItems = _currentPage * pageSize;
                   final displayedItems = filtered.take(maxItems).toList();
 
-                  return Column(
-                    children: [
-                      // Barra fina: sigue habiendo categorías cargando en
-                      // segundo plano mientras la grilla ya es usable.
-                      if (stillLoading) const LinearProgressIndicator(minHeight: 2),
-                      Expanded(
-                        child: MasonryGridView.count(
-                          controller: _scrollController,
-                          padding: const EdgeInsets.all(12),
-                          crossAxisCount: 2,
-                          mainAxisSpacing: 12,
-                          crossAxisSpacing: 12,
-                          itemCount: displayedItems.length + (_isLoadingMore ? 1 : 0),
-                          itemBuilder: (context, index) {
-                            // Mostrar loading indicator al final si está cargando
-                            if (index == displayedItems.length) {
-                              return const Center(
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              );
-                            }
+                  return MasonryGridView.count(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.all(12),
+                    crossAxisCount: 2,
+                    mainAxisSpacing: 12,
+                    crossAxisSpacing: 12,
+                    itemCount: displayedItems.length + (_isLoadingMore ? 1 : 0),
+                    itemBuilder: (context, index) {
+                      // Mostrar loading indicator al final si está cargando
+                      if (index == displayedItems.length) {
+                        return const Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        );
+                      }
 
-                            final wallpaper = displayedItems[index];
-                            return WallpaperTile(
-                              wallpaper: wallpaper,
-                              onTap: () => Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => WallpaperDetailScreen(wallpaper: wallpaper),
-                                ),
-                              ),
-                            );
-                          },
+                      final wallpaper = displayedItems[index];
+                      return WallpaperTile(
+                        wallpaper: wallpaper,
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => WallpaperDetailScreen(wallpaper: wallpaper),
+                          ),
                         ),
-                      ),
-                    ],
+                      );
+                    },
                   );
                 },
               ),

@@ -12,12 +12,12 @@ import 'search_tab.dart';
 class WallpapersTab extends StatefulWidget {
   const WallpapersTab({
     super.key,
-    required this.wallpapersStream,
+    required this.wallpapersFuture,
     required this.categoriesFuture,
     this.initialTabIndex = 0,
   });
 
-  final Stream<List<Wallpaper>> wallpapersStream;
+  final Future<List<Wallpaper>> wallpapersFuture;
   final Future<List<WallpaperCategory>> categoriesFuture;
 
   /// 0 = Estáticos, 1 = Animados, 2 = Búsqueda. Permite que "Inicio" abra directo en la
@@ -60,7 +60,7 @@ class _WallpapersTabState extends State<WallpapersTab>
         controller: _tabController,
         children: [
           CatalogTab(
-            wallpapersStream: widget.wallpapersStream,
+            wallpapersFuture: widget.wallpapersFuture,
             categoriesFuture: widget.categoriesFuture,
           ),
           const AnimatedWallpapersTab(),

@@ -65,7 +65,7 @@ class _HomeShellState extends State<HomeShell> {
       ),
       WallpapersTab(
         key: ValueKey(_fondosInstanceKey),
-        wallpapersStream: _wallpapersStream,
+        wallpapersFuture: _wallpapersFuture,
         categoriesFuture: _categoriesFuture,
         initialTabIndex: _fondosInitialTab,
       ),
