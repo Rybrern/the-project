@@ -1,11 +1,23 @@
 import 'package:flutter/foundation.dart';
 
 import '../batch_config.dart';
+import '../../tag_normalization/tag_seeder.dart';
+import '../../../database/app_database.dart';
+import '../../../models/wallpaper.dart' show Wallpaper;
 import 'pipeline_stage.dart';
 
 /// Stage 5: Clasifica los wallpapers en categorías y subcategorías.
 /// Utiliza source, tags y otros metadatos para determinar la categoría.
+/// También siembra tags en la base de datos v6 desde metadatos de la API.
 class ClassificationStage implements PipelineStage {
+  final AppDatabase? appDatabase;
+  TagSeeder? _tagSeeder;
+
+  ClassificationStage({this.appDatabase}) {
+    if (appDatabase != null) {
+      _tagSeeder = TagSeeder(appDatabase);
+    }
+  }
   @override
   String get name => 'classification';
 
@@ -27,6 +39,13 @@ class ClassificationStage implements PipelineStage {
 
         candidate.updateMetadata('primary_category', classification['primary']);
         candidate.updateMetadata('subcategory', classification['secondary']);
+
+        // Seed tags into the database if database is available
+        if (_tagSeeder != null && tags.isNotEmpty) {
+          // Reconstruct minimal wallpaper object from metadata for tag seeding
+          final wallpaper = _buildWallpaperFromCandidate(candidate);
+          await _tagSeeder!.seedTagsFromImage(wallpaper);
+        }
 
         debugPrint(
           'ClassificationStage: Classified as ${classification['primary']}/${classification['secondary']}',
@@ -163,5 +182,26 @@ class ClassificationStage implements PipelineStage {
 
     // Default: otros deportes
     return 'otros-deportes';
+  }
+
+  /// Builds a minimal Wallpaper object from PipelineCandidate metadata
+  /// Used for tag seeding during classification stage
+  Wallpaper _buildWallpaperFromCandidate(PipelineCandidate candidate) {
+    final tags = candidate.getMetadata('tags') as List<String>? ?? [];
+    final aspectRatio = (candidate.getMetadata('aspect_ratio') as num?)?.toDouble() ?? 1.0;
+
+    return Wallpaper(
+      id: candidate.sourceId,
+      thumbnailUrl: candidate.url,
+      fullUrl: candidate.url,
+      author: candidate.getMetadata('author') as String? ?? 'Unknown',
+      category: candidate.getMetadata('category') as String? ?? 'general',
+      aspectRatio: aspectRatio,
+      source: candidate.source,
+      sourceId: candidate.sourceId,
+      tags: tags.isNotEmpty ? tags : null,
+      primaryCategory: candidate.getMetadata('primary_category') as String?,
+      subcategory: candidate.getMetadata('subcategory') as String?,
+    );
   }
 }

@@ -195,4 +195,92 @@ class TagAliasDAO {
     }
     return map;
   }
+
+  /// Obtiene todos los aliases paginados
+  Future<List<TagAlias>> getAllPaginated({int limit = 1000, int offset = 0}) async {
+    final db = await _appDatabase.database;
+    final maps = await db.query(
+      'tag_aliases',
+      limit: limit,
+      offset: offset,
+      orderBy: 'confidence DESC',
+    );
+    return maps.map((map) => TagAlias.fromMap(map)).toList();
+  }
+
+  /// Obtiene todas los alias para múltiples tags
+  Future<Map<int, List<TagAlias>>> getByTagIds(List<int> tagIds) async {
+    if (tagIds.isEmpty) return {};
+
+    final db = await _appDatabase.database;
+    final placeholders = tagIds.map((_) => '?').join(',');
+
+    final maps = await db.query(
+      'tag_aliases',
+      where: 'tag_id IN ($placeholders)',
+      whereArgs: tagIds,
+      orderBy: 'confidence DESC',
+    );
+
+    final result = <int, List<TagAlias>>{};
+    for (final map in maps) {
+      final alias = TagAlias.fromMap(map);
+      result.putIfAbsent(alias.tagId, () => []).add(alias);
+    }
+    return result;
+  }
+
+  /// Agrega un alias o actualiza su confianza si ya existe
+  Future<int> upsertAlias({
+    required int tagId,
+    required String aliasText,
+    required String normalizedAlias,
+    String? source,
+    double confidence = 0.8,
+  }) async {
+    // Buscar alias existente
+    final existing = await getByNormalizedAlias(normalizedAlias);
+    if (existing.isNotEmpty) {
+      final alias = existing.first;
+      if (confidence > alias.confidence) {
+        await update(alias.copyWith(confidence: confidence));
+      }
+      return alias.id;
+    }
+
+    // Crear nuevo alias
+    final alias = TagAlias(
+      id: 0,
+      tagId: tagId,
+      aliasText: aliasText,
+      normalizedAlias: normalizedAlias,
+      source: source,
+      confidence: confidence,
+      createdAt: DateTime.now(),
+    );
+    return await insert(alias);
+  }
+}
+
+/// Extension para TagAlias copyWith
+extension TagAliasCopyWithExt on TagAlias {
+  TagAlias copyWith({
+    int? id,
+    int? tagId,
+    String? aliasText,
+    String? normalizedAlias,
+    String? source,
+    double? confidence,
+    DateTime? createdAt,
+  }) {
+    return TagAlias(
+      id: id ?? this.id,
+      tagId: tagId ?? this.tagId,
+      aliasText: aliasText ?? this.aliasText,
+      normalizedAlias: normalizedAlias ?? this.normalizedAlias,
+      source: source ?? this.source,
+      confidence: confidence ?? this.confidence,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
 }

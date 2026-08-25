@@ -263,4 +263,88 @@ class ImageTagDAO {
     }
     return map;
   }
+
+  /// Links a wallpaper to a tag with confidence and source
+  /// Convenience method combining insert + metadata tracking
+  Future<int> linkWithConfidence(
+    String wallpaperId,
+    int tagId, {
+    double confidence = 1.0,
+    String? source,
+  }) async {
+    final imageTag = ImageTag(
+      id: 0,
+      wallpaperId: wallpaperId,
+      tagId: tagId,
+      confidence: confidence,
+      source: source,
+      createdAt: DateTime.now(),
+    );
+    return await insert(imageTag);
+  }
+
+  /// Actualiza la confianza de un tag en una imagen
+  Future<void> updateConfidence(
+    String wallpaperId,
+    int tagId,
+    double newConfidence,
+  ) async {
+    final db = await _appDatabase.database;
+    await db.update(
+      'image_tags',
+      {'confidence': newConfidence},
+      where: 'wallpaper_id = ? AND tag_id = ?',
+      whereArgs: [wallpaperId, tagId],
+    );
+  }
+
+  /// Obtiene o crea una asociación image-tag (upsert)
+  Future<int> upsertImageTag(
+    String wallpaperId,
+    int tagId, {
+    double confidence = 1.0,
+    String? source,
+  }) async {
+    final existing = await _findExistingImageTag(wallpaperId, tagId);
+
+    if (existing != null) {
+      // Actualizar confianza si es mayor
+      if (confidence > existing.confidence) {
+        await updateConfidence(wallpaperId, tagId, confidence);
+      }
+      return existing.id;
+    } else {
+      return await linkWithConfidence(
+        wallpaperId,
+        tagId,
+        confidence: confidence,
+        source: source,
+      );
+    }
+  }
+
+  /// Busca una asociación image-tag existente
+  Future<ImageTag?> _findExistingImageTag(String wallpaperId, int tagId) async {
+    final db = await _appDatabase.database;
+    final maps = await db.query(
+      'image_tags',
+      where: 'wallpaper_id = ? AND tag_id = ?',
+      whereArgs: [wallpaperId, tagId],
+      limit: 1,
+    );
+    if (maps.isEmpty) return null;
+    return ImageTag.fromMap(maps.first);
+  }
+
+  /// Obtiene las imágenes más etiquetadas (para análisis)
+  Future<List<Map<String, dynamic>>> getMostTaggedImages({int limit = 20}) async {
+    final db = await _appDatabase.database;
+    return await db.rawQuery('''
+      SELECT wallpaper_id, COUNT(*) as tag_count
+      FROM image_tags
+      GROUP BY wallpaper_id
+      ORDER BY tag_count DESC
+      LIMIT ?
+    ''', [limit]);
+  }
 }

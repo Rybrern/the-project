@@ -191,4 +191,76 @@ class TagDAO {
       LIMIT ?
     ''', [limit]);
   }
+
+  /// Inserta o actualiza un tag canónico (upsert)
+  /// Si el tag existe, lo actualiza; si no, lo crea
+  Future<int> upsertCanonical({
+    required String canonicalName,
+    required String displayName,
+    required String tagType,
+    String? description,
+    int? parentTagId,
+    double confidence = 0.95,
+  }) async {
+    // Intenta obtener el tag existente
+    final existing = await getByCanonicalName(canonicalName);
+
+    if (existing != null) {
+      // Actualizar si la confianza es mayor
+      if (confidence > existing.confidence) {
+        await update(existing.copyWith(confidence: confidence));
+      }
+      return existing.id;
+    } else {
+      // Crear nuevo tag
+      final tag = Tag(
+        id: 0,
+        canonicalName: canonicalName,
+        displayName: displayName,
+        tagType: tagType,
+        description: description,
+        parentTagId: parentTagId,
+        confidence: confidence,
+        createdAt: DateTime.now(),
+      );
+      return await insert(tag);
+    }
+  }
+
+  /// Obtiene todos los tags paginados
+  Future<List<Tag>> getAllPaginated({int limit = 1000, int offset = 0}) async {
+    final db = await _appDatabase.database;
+    final maps = await db.query(
+      'tags',
+      limit: limit,
+      offset: offset,
+      orderBy: 'display_name ASC',
+    );
+    return maps.map((map) => Tag.fromMap(map)).toList();
+  }
+}
+
+/// Extension para Tag copyWith
+extension TagCopyWithExt on Tag {
+  Tag copyWith({
+    int? id,
+    String? canonicalName,
+    String? displayName,
+    String? tagType,
+    String? description,
+    int? parentTagId,
+    double? confidence,
+    DateTime? createdAt,
+  }) {
+    return Tag(
+      id: id ?? this.id,
+      canonicalName: canonicalName ?? this.canonicalName,
+      displayName: displayName ?? this.displayName,
+      tagType: tagType ?? this.tagType,
+      description: description ?? this.description,
+      parentTagId: parentTagId ?? this.parentTagId,
+      confidence: confidence ?? this.confidence,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
 }
