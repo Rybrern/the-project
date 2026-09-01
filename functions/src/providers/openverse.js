@@ -60,10 +60,10 @@ async function search(query, limit = 24) {
           .map((t) => t.name)
           .filter(Boolean);
 
-        if (!isAppropriateWallpaper({ text: `${title} ${tags.join(' ')}`, width, height })) {
+        if (!image.url) return null;
+        if (!isAppropriateWallpaper({ text: `${title} ${tags.join(' ')}`, width, height, url: image.url })) {
           return null;
         }
-        if (!image.url) return null;
 
         return {
           sourceId: String(image.id),

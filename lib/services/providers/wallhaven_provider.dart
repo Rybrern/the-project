@@ -56,9 +56,18 @@ class WallhavenProvider implements WallpaperProvider {
       }
 
       final body = jsonDecode(response.body) as Map<String, dynamic>;
-      final items = (body['data'] as List<dynamic>).cast<Map<String, dynamic>>();
+      final List<dynamic> rawItems = body['data'] as List<dynamic>;
 
-      return items.map(_mapItemToWallpaper).toList();
+      final List<Wallpaper> wallpapers = [];
+      for (final rawItem in rawItems) {
+        if (rawItem is Map<String, dynamic>) {
+          final wallpaper = _mapItemToWallpaper(rawItem);
+          if (wallpaper != null) {
+            wallpapers.add(wallpaper);
+          }
+        }
+      }
+      return wallpapers;
     } catch (error) {
       debugPrint('WallhavenProvider.searchPaginated error: $error');
       return [];
@@ -88,9 +97,18 @@ class WallhavenProvider implements WallpaperProvider {
       }
 
       final body = jsonDecode(response.body) as Map<String, dynamic>;
-      final items = (body['data'] as List<dynamic>).cast<Map<String, dynamic>>();
+      final List<dynamic> rawItems = body['data'] as List<dynamic>;
 
-      return items.map(_mapItemToWallpaper).toList();
+      final List<Wallpaper> wallpapers = [];
+      for (final rawItem in rawItems) {
+        if (rawItem is Map<String, dynamic>) {
+          final wallpaper = _mapItemToWallpaper(rawItem);
+          if (wallpaper != null) {
+            wallpapers.add(wallpaper);
+          }
+        }
+      }
+      return wallpapers;
     } catch (error) {
       debugPrint('WallhavenProvider.searchByCategory error: $error');
       return [];
@@ -140,23 +158,57 @@ class WallhavenProvider implements WallpaperProvider {
     // Wallhaven no tiene estado interno que resetear
   }
 
-  Wallpaper _mapItemToWallpaper(Map<String, dynamic> item) {
-    final width = (item['dimension_x'] as num).toDouble();
-    final height = (item['dimension_y'] as num).toDouble();
-    final thumbs = item['thumbs'] as Map<String, dynamic>;
+  Wallpaper? _mapItemToWallpaper(Map<String, dynamic> item) {
+    // Safely extract essential data, returning null if critical fields are missing or invalid.
+    final String? path = item['path'] as String?;
+    final Map<String, dynamic>? thumbs = item['thumbs'] as Map<String, dynamic>?;
+    final String? itemIdNullable = item['id'] as String?; // Use a different name to avoid confusion
+
+    // If critical fields (path, thumbs, or ID) are missing, we cannot create a valid Wallpaper object.
+    if (path == null || thumbs == null || itemIdNullable == null) {
+      debugPrint('WallhavenProvider: Skipping item due to missing critical data (path, thumbs, or id): ${item['id'] ?? 'unknown ID'}');
+      return null; // Discard this item.
+    }
+
+    // At this point, itemIdNullable is guaranteed to be non-null.
+    final String itemId = itemIdNullable!; // Assert non-nullability
+
+    // Safely extract dimensions.
+    final double? width = (item['dimension_x'] as num?)?.toDouble();
+    final double? height = (item['dimension_y'] as num?)?.toDouble();
+
+    // Safely extract thumbnail URLs.
+    final String? largeThumb = thumbs['large'] as String?;
+    final String? smallThumb = thumbs['small'] as String?;
+    final String? thumbnailUrl = largeThumb ?? smallThumb;
+    final String? previewUrl = largeThumb ?? thumbnailUrl;
+
+    // Safely extract tags.
     final tags = (item['tags'] as List<dynamic>?)?.map((t) => (t as Map)['name'] as String).toList();
 
+    // Construct the Wallpaper object, ensuring all non-nullable fields have valid values.
+    // If any required field cannot be constructed, return null.
+    final String constructedId = 'wallhaven_$itemId'; // itemId is guaranteed non-null here.
+    final String constructedFullUrl = path.startsWith('http')
+        ? path
+        : 'https://wallhaven.cc/${path.startsWith('/') ? path.substring(1) : path}';
+    final String constructedSourceId = itemId; // itemId is guaranteed non-null here.
+    final String constructedOriginalUrl = 'https://wallhaven.cc/w/$itemId'; // itemId is guaranteed non-null here.
+    final double constructedAspectRatio = (width != null && height != null && height != 0) ? width / height : 1.0; // Defaulted to non-null.
+
+    // All required fields for Wallpaper constructor are now guaranteed to be non-null.
     return Wallpaper(
-      id: 'wallhaven_${item['id']}',
-      thumbnailUrl: thumbs['large'] as String? ?? thumbs['small'] as String,
-      fullUrl: item['path'] as String,
-      author: 'Wallhaven',
-      category: 'general',
-      aspectRatio: width / height,
-      source: 'wallhaven',
-      sourceId: item['id'] as String,
-      originalUrl: 'https://wallhaven.cc/w/${item['id']}',
-      tags: tags,
+      id: constructedId,
+      thumbnailUrl: thumbnailUrl, // This can be null, and the UI should handle it.
+      fullUrl: constructedFullUrl,
+      previewUrl: previewUrl,
+      author: 'Wallhaven', // Hardcoded non-null.
+      category: 'general', // Hardcoded non-null.
+      aspectRatio: constructedAspectRatio,
+      source: 'wallhaven', // Hardcoded non-null.
+      sourceId: constructedSourceId,
+      originalUrl: constructedOriginalUrl,
+      tags: tags, // This can be null.
     );
   }
 }

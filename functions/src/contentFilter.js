@@ -41,11 +41,49 @@ function hasEnoughResolution(width, height) {
   return width >= MIN_WIDTH && height >= MIN_HEIGHT;
 }
 
-function isAppropriateWallpaper({ text, width, height }) {
+// Formatos que el decoder de imágenes de Flutter (cached_network_image /
+// Image.network) puede pintar. SVG, PDF y similares (comunes en Wikimedia
+// Commons vía OpenVerse: mapas de circuitos, diagramas) descargan bien pero
+// fallan al decodificar como bitmap — el tile queda con el ícono de "imagen
+// rota" sin que medie ningún problema de red.
+const RASTER_EXTENSIONS = /\.(jpe?g|png|gif|webp|bmp)(\?.*)?$/i;
+
+function isRasterImageUrl(url) {
+  if (!url) return false;
+  return RASTER_EXTENSIONS.test(url);
+}
+
+function isAppropriateWallpaper({ text, width, height, url }) {
   if (isMemeOrReaction(text)) return false;
   if (isInappropriate(text)) return false;
   if (!hasEnoughResolution(width, height)) return false;
+  if (url !== undefined && !isRasterImageUrl(url)) return false;
   return true;
 }
 
-module.exports = { isMemeOrReaction, isInappropriate, hasEnoughResolution, isAppropriateWallpaper };
+// GIPHY aloja sus GIFs en baja resolución por diseño (para chats, no
+// pantallas completas): confirmado en el catálogo real que ~94% mide menos
+// de 600px de lado y ~67% es prácticamente cuadrado (stickers/reacciones,
+// no animaciones panorámicas). MIN_WIDTH/MIN_HEIGHT (360) es demasiado
+// permisivo para ese tipo de contenido — este chequeo adicional, solo para
+// fondos animados, exige que el clip tenga forma rectangular real (no
+// cuadrada) y una resolución mínima que se vea aceptable a pantalla
+// completa.
+const MIN_ANIMATED_LONG_SIDE = 600;
+const SQUARE_ASPECT_TOLERANCE = 0.05;
+
+function isWallpaperShaped(width, height) {
+  const aspect = width / height;
+  const isSquare = Math.abs(aspect - 1) < SQUARE_ASPECT_TOLERANCE;
+  const maxSide = Math.max(width, height);
+  return !isSquare && maxSide >= MIN_ANIMATED_LONG_SIDE;
+}
+
+module.exports = {
+  isMemeOrReaction,
+  isInappropriate,
+  hasEnoughResolution,
+  isRasterImageUrl,
+  isWallpaperShaped,
+  isAppropriateWallpaper,
+};

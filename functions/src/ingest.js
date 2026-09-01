@@ -8,6 +8,7 @@ const unsplash = require('./providers/unsplash');
 const giphy = require('./providers/giphy');
 const { normalizeTags, normalizeTag } = require('./tagNormalizer');
 const { CATEGORY_QUERIES } = require('./categories');
+const { isRasterImageUrl } = require('./contentFilter');
 
 // Boosts de fuente, portados de lib/services/search/popularity_ranker.dart
 const SOURCE_BOOST = {
@@ -131,7 +132,12 @@ async function runIngestion({ categoryIds, perProviderLimit = 10, concurrency = 
       wallhaven.search(query, process.env.WALLHAVEN_API_KEY, perProviderLimit),
       pixabay.search(query, process.env.PIXABAY_API_KEY, perProviderLimit),
       unsplash.search(query, process.env.UNSPLASH_ACCESS_KEY, perProviderLimit),
-      giphy.search(query, process.env.GIPHY_API_KEY, perProviderLimit),
+      // GIPHY rechaza ~97% de sus resultados por forma/resolución
+      // (isWallpaperShaped en contentFilter.js) — con el mismo límite de 10
+      // candidatos crudos que el resto de proveedores, casi ninguna query
+      // termina con un sobreviviente. Se pide el máximo que admite su API
+      // (50 por página) para darle margen real al filtro.
+      giphy.search(query, process.env.GIPHY_API_KEY, Math.max(perProviderLimit, 50)),
     ]);
 
     const combined = [...ov, ...wh, ...pb, ...us, ...gp];
@@ -139,6 +145,14 @@ async function runIngestion({ categoryIds, perProviderLimit = 10, concurrency = 
 
     for (const item of combined) {
       if (!item.url || !item.width || !item.height) {
+        rejected++;
+        continue;
+      }
+
+      // Los estáticos deben ser un formato que el decoder de imágenes del
+      // cliente pueda pintar (ver contentFilter.isRasterImageUrl) — los
+      // animados usan `url` para el mp4 de reproducción, no aplica.
+      if (!item.isAnimated && !isRasterImageUrl(item.url)) {
         rejected++;
         continue;
       }

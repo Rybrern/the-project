@@ -1,5 +1,5 @@
 const fetch = require('node-fetch');
-const { isAppropriateWallpaper } = require('../contentFilter');
+const { isAppropriateWallpaper, isWallpaperShaped } = require('../contentFilter');
 
 const BASE_URL = 'https://api.giphy.com/v1/gifs';
 
@@ -61,7 +61,19 @@ async function search(query, apiKey, limit = 24) {
     url.searchParams.set('lang', 'en');
 
     const res = await fetch(url, { timeout: 10000 });
-    if (!res.ok) return [];
+    if (!res.ok) {
+      // 429 (rate limit) queda indistinguible de "sin resultados" si no se
+      // loguea aparte — así fue como pasó desapercibido que la key estaba
+      // limitada a 42 req/hora (nivel Beta/Testing de GIPHY) y una
+      // reingesta completa (~220 queries) la agotaba en minutos, dejando
+      // el resto de las queries sin contenido real sin ningún indicio.
+      if (res.status === 429) {
+        console.warn(`[giphy] rate limited (429) on query "${query}" — considerar Production Access en el dashboard de GIPHY`);
+      } else {
+        console.warn(`[giphy] search failed with status ${res.status} on query "${query}"`);
+      }
+      return [];
+    }
     const body = await res.json();
     const data = body.data || [];
 
@@ -92,6 +104,8 @@ async function search(query, apiKey, limit = 24) {
         })) {
           return null;
         }
+
+        if (!isWallpaperShaped(dimensions.width, dimensions.height)) return null;
 
         return {
           sourceId: id,

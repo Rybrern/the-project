@@ -23,14 +23,23 @@ class RemoteSearchService {
   }
 
   List<String> _tokenize(String query) {
-    return query
+    final allTokens = query
         .toLowerCase()
         .split(RegExp(r'\s+'))
         .map(_normalizeToken)
         .where((t) => t.isNotEmpty)
         .toSet()
-        .take(_maxWhereInClauses)
         .toList();
+
+    // Los tokens de 1 carácter (p. ej. el "1" de "formula 1") son demasiado
+    // genéricos para `arrayContainsAny`: hacen match OR contra cualquier tag
+    // corto no relacionado (números de camiseta, "Ligue 1", etc.) e inundan
+    // los resultados con contenido irrelevante. Se descartan salvo que sean
+    // el único token de la query, para no dejar la búsqueda vacía.
+    final meaningful = allTokens.where((t) => t.length > 1).toList();
+    final tokens = meaningful.isNotEmpty ? meaningful : allTokens;
+
+    return tokens.take(_maxWhereInClauses).toList();
   }
 
   /// Busca wallpapers estáticos (no animados) cuyos tags coincidan con al menos

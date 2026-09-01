@@ -19,7 +19,6 @@ import '../services/utils/timeout_helper.dart';
 import '../state/favorites_controller.dart';
 import '../state/quality_settings_controller.dart';
 import '../utils/wallpaper_image_processor.dart';
-import '../services/image_loading/progressive_image_loader.dart';
 import '../widgets/pannable_wallpaper_preview.dart';
 import '../widgets/wallpaper_target_sheet.dart';
 import 'wallpaper_crop_screen.dart';
