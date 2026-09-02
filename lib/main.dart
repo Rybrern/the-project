@@ -7,6 +7,7 @@ import 'config/wallhaven_config.dart';
 import 'screens/home_shell.dart';
 import 'screens/onboarding_screen.dart';
 import 'services/ads_service.dart';
+import 'services/hybrid_wallpaper_service.dart';
 import 'services/wallhaven_wallpaper_service.dart';
 import 'state/favorites_controller.dart';
 
@@ -65,7 +66,11 @@ class _StartupGateState extends State<_StartupGate> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     if (_onboardingComplete == true) {
-      return HomeShell(wallpaperService: WallhavenWallpaperService(apiKey: wallhavenApiKey));
+      return HomeShell(
+        wallpaperService: HybridWallpaperService(
+          wallhavenService: WallhavenWallpaperService(apiKey: wallhavenApiKey),
+        ),
+      );
     }
     return OnboardingScreen(onFinished: () => setState(() => _onboardingComplete = true));
   }

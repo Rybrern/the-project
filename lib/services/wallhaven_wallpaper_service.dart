@@ -58,6 +58,7 @@ class WallhavenWallpaperService implements WallpaperService {
         'purity': '100', // sfw only
         'sorting': 'random', // catálogo distinto en cada carga
         'per_page': '$_wallpapersPerCategory',
+        'atleast': '1920x1080', // server-side filtro HD mínimo (ahorra ancho de banda)
         if (category.ratios != null) 'ratios': category.ratios!,
         if (apiKey.isNotEmpty) 'apikey': apiKey,
       };
@@ -76,7 +77,10 @@ class WallhavenWallpaperService implements WallpaperService {
 
       final body = jsonDecode(response.body) as Map<String, dynamic>;
       final items = (body['data'] as List<dynamic>).cast<Map<String, dynamic>>();
-      return items.map((item) => _mapItem(item, category)).toList();
+      return items
+          .map((item) => _mapItem(item, category))
+          .whereType<Wallpaper>()
+          .toList();
     } on TimeoutException {
       debugPrint('WallhavenWallpaperService: timeout para "${category.query}"');
       return const [];
@@ -86,10 +90,44 @@ class WallhavenWallpaperService implements WallpaperService {
     }
   }
 
-  Wallpaper _mapItem(Map<String, dynamic> item, WallpaperCategory category) {
+  // Filtro de calidad: rechaza fondos que se verán pixelados en pantalla completa.
+  // - Rechaza GIF/animados (baja calidad Giphy, artefactos)
+  // - Rechaza resoluciones < 1080p en lado corto (se verá borroso al estirar)
+  bool _isHighQuality(Map<String, dynamic> item) {
+    final fileType = item['file_type'] as String?;
+    if (fileType != null && fileType.toLowerCase().contains('gif')) return false;
+    final w = item['dimension_x'] as num?;
+    final h = item['dimension_y'] as num?;
+    if (w == null || h == null) return false;
+    final shortSide = w.toDouble() < h.toDouble() ? w.toDouble() : h.toDouble();
+    final longSide = w.toDouble() > h.toDouble() ? w.toDouble() : h.toDouble();
+    // Mínimo HD: lado corto >=1080, largo >=1920 (~2MP). Ajustable via atleast en query.
+    if (shortSide < 1080 || longSide < 1920) return false;
+    // Opcional: filtrar archivos muy pequeños (<300KB suele ser thumbnail upscaleado)
+    final fileSize = item['file_size'] as num?;
+    if (fileSize != null && fileSize < 300 * 1024) return false;
+    return true;
+  }
+
+  double _qualityScore(num w, num h) {
+    final pixels = w.toDouble() * h.toDouble();
+    if (pixels >= 3840 * 2160) return 1.0; // 4K
+    if (pixels >= 2560 * 1440) return 0.9; // QHD
+    if (pixels >= 1920 * 1080) return 0.8; // FHD
+    if (pixels >= 1280 * 720) return 0.5;
+    return 0.2;
+  }
+
+  Wallpaper? _mapItem(Map<String, dynamic> item, WallpaperCategory category) {
+    if (!_isHighQuality(item)) return null;
     final width = (item['dimension_x'] as num).toDouble();
     final height = (item['dimension_y'] as num).toDouble();
     final thumbs = item['thumbs'] as Map<String, dynamic>;
+    // Tags oficiales de Wallhaven
+    final tags = (item['tags'] as List<dynamic>?)
+        ?.map((t) => (t as Map<String, dynamic>)['name'] as String?)
+        .whereType<String>()
+        .toList();
 
     return Wallpaper(
       id: item['id'] as String,
@@ -99,6 +137,16 @@ class WallhavenWallpaperService implements WallpaperService {
       category: category.id,
       aspectRatio: width / height,
       forcePortraitCrop: category.forcePortraitCrop,
+      source: 'wallhaven',
+      sourceId: item['id'] as String,
+      originalUrl: 'https://wallhaven.cc/w/${item['id']}',
+      tags: tags,
+      width: width.toInt(),
+      height: height.toInt(),
+      fileSize: (item['file_size'] as num?)?.toInt(),
+      fileType: item['file_type'] as String?,
+      qualityScore: _qualityScore(width, height),
+      previewUrl: thumbs['large'] as String?,
     );
   }
 }

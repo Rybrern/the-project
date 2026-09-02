@@ -255,9 +255,27 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        'Por ${widget.wallpaper.author}',
+                        'Por ${widget.wallpaper.author}${widget.wallpaper.width != null ? ' • ${widget.wallpaper.width}x${widget.wallpaper.height}' : ''}${widget.wallpaper.source == 'manual' ? ' • Manual' : ''}',
                         style: const TextStyle(color: Colors.white70),
                       ),
+                      if (widget.wallpaper.tags != null && widget.wallpaper.tags!.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 4,
+                          alignment: WrapAlignment.center,
+                          children: widget.wallpaper.tags!
+                              .take(8)
+                              .map((t) => Chip(
+                                    label: Text(t, style: const TextStyle(fontSize: 11)),
+                                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    visualDensity: VisualDensity.compact,
+                                    backgroundColor: Colors.white24,
+                                    labelStyle: const TextStyle(color: Colors.white),
+                                  ))
+                              .toList(),
+                        ),
+                      ],
                       const SizedBox(height: 12),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
