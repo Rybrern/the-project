@@ -1,8 +1,9 @@
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'config/supabase_config.dart';
 import 'config/wallhaven_config.dart';
 import 'screens/home_shell.dart';
 import 'screens/onboarding_screen.dart';
@@ -13,7 +14,10 @@ import 'state/favorites_controller.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+  if (isSupabaseConfigured) {
+    await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
+    // ignore: deprecated_member_use - anonKey compat con supabase_flutter 2.10
+  }
   AdsService.instance.initialize();
   runApp(const WallpaperApp());
 }

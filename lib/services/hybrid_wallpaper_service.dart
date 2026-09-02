@@ -3,22 +3,26 @@ import 'dart:async';
 import '../models/category.dart';
 import '../models/wallpaper.dart';
 import 'manual_catalog_service.dart';
+import 'supabase_catalog_service.dart';
 import 'wallhaven_wallpaper_service.dart';
 import 'wallpaper_service.dart';
 
-/// Combina Wallhaven (alta calidad, tags oficiales) + catálogo manual por links.
+/// Combina Supabase remoto (sin update APK) + asset manual + Wallhaven.
 ///
-/// - Wallhaven ya filtra GIF y <1080p server-side (`atleast`) y client-side.
-/// - Manual se valida en `ManualCatalogService` (https, no gif, >=1080p).
-/// - Deduplica por `fullUrl` y prioriza manual arriba en la grilla.
+/// Prioridad: Supabase (instantáneo remoto, editable sin APK) > asset manual > Wallhaven.
+/// - Si Supabase no está configurado, funciona solo con asset + Wallhaven (no rompe).
+/// - Todos filtran GIF y <1080p.
 class HybridWallpaperService implements WallpaperService {
   HybridWallpaperService({
     required this.wallhavenService,
     ManualCatalogService? manualService,
-  }) : _manualService = manualService ?? ManualCatalogService();
+    SupabaseCatalogService? supabaseService,
+  })  : _manualService = manualService ?? ManualCatalogService(),
+        _supabaseService = supabaseService ?? SupabaseCatalogService();
 
   final WallhavenWallpaperService wallhavenService;
   final ManualCatalogService _manualService;
+  final SupabaseCatalogService _supabaseService;
 
   @override
   Future<List<WallpaperCategory>> fetchCategories() async =>
@@ -27,42 +31,45 @@ class HybridWallpaperService implements WallpaperService {
   @override
   Future<List<Wallpaper>> fetchWallpapers() async {
     final results = await Future.wait([
+      _supabaseService.fetchPublished(),
       _manualService.loadManualWallpapers(),
       wallhavenService.fetchWallpapers(),
     ]);
-    final manual = results[0];
-    final remote = results[1];
-    return _merge(manual, remote);
+    final supabase = results[0];
+    final manual = results[1];
+    final remote = results[2];
+    return _merge([...supabase, ...manual], remote);
   }
 
   @override
   Stream<List<Wallpaper>> fetchWallpapersStream() {
     final controller = StreamController<List<Wallpaper>>();
-    // Cargar manual primero (instantáneo, asset local) luego ir agregando wallhaven en streaming
-    _manualService.loadManualWallpapers().then((manual) {
+    Future.wait([
+      _supabaseService.fetchPublished(),
+      _manualService.loadManualWallpapers(),
+    ]).then((lists) {
+      final supabase = lists[0];
+      final manual = lists[1];
+      final initial = [...supabase, ...manual];
       if (controller.isClosed) return;
-      // Emitir manual inmediatamente para que la grilla no quede vacía
-      final dedup = <String, Wallpaper>{for (final w in manual) w.fullUrl: w};
+      final dedup = <String, Wallpaper>{for (final w in initial) w.fullUrl: w};
       controller.add(List.unmodifiable(dedup.values));
 
-      // Suscribir al stream de wallhaven y fusionar incrementalmente
       wallhavenService.fetchWallpapersStream().listen(
         (batch) {
           for (final w in batch) {
             dedup.putIfAbsent(w.fullUrl, () => w);
           }
           if (!controller.isClosed) {
-            // Orden: manual primero, luego wallhaven orden estable
             final merged = [
-              ...manual,
-              ...dedup.values.where((w) => w.source != 'manual'),
+              ...initial,
+              ...dedup.values.where((w) => w.source != 'manual' && w.source != 'supabase'),
             ];
             controller.add(List.unmodifiable(merged));
           }
         },
         onDone: () => controller.close(),
         onError: (e) {
-          // Si wallhaven falla, al menos queda el manual
           if (!controller.isClosed) controller.close();
         },
       );
