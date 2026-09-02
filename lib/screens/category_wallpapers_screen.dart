@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
-import 'package:provider/provider.dart';
 
 import '../models/category.dart';
 import '../models/wallpaper.dart';
-import '../state/orientation_preference_controller.dart';
-import '../utils/wallpaper_orientation_filter.dart';
 import '../widgets/wallpaper_tile.dart';
 import 'wallpaper_detail_screen.dart';
 
@@ -17,13 +14,6 @@ class CategoryWallpapersScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final orientationPrefs = context.watch<OrientationPreferenceController>();
-    final filtered = filterByOrientation(
-      wallpapers,
-      deviceFitsWide: deviceFitsWideWallpapers(context),
-      showMismatched: orientationPrefs.showMismatched,
-    );
-
     return Scaffold(
       appBar: AppBar(title: Text('${category.emoji} ${category.name}')),
       body: MasonryGridView.count(
@@ -31,9 +21,9 @@ class CategoryWallpapersScreen extends StatelessWidget {
         crossAxisCount: 2,
         mainAxisSpacing: 12,
         crossAxisSpacing: 12,
-        itemCount: filtered.length,
+        itemCount: wallpapers.length,
         itemBuilder: (context, index) {
-          final wallpaper = filtered[index];
+          final wallpaper = wallpapers[index];
           return WallpaperTile(
             wallpaper: wallpaper,
             onTap: () => Navigator.of(context).push(

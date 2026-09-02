@@ -1,33 +1,24 @@
-import 'dart:async';
-
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'config/supabase_config.dart';
 import 'config/wallhaven_config.dart';
-import 'config/media_api_config.dart';
-import 'database/app_database.dart';
 import 'screens/home_shell.dart';
 import 'screens/onboarding_screen.dart';
-import 'screens/splash_screen.dart';
 import 'services/ads_service.dart';
-import 'services/database/database_initialization_service.dart';
-import 'services/unified_wallpaper_service.dart';
+import 'services/hybrid_wallpaper_service.dart';
+import 'services/wallhaven_wallpaper_service.dart';
 import 'state/favorites_controller.dart';
-import 'state/orientation_preference_controller.dart';
-import 'state/quality_settings_controller.dart';
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+  if (isSupabaseConfigured) {
+    await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
+    // ignore: deprecated_member_use - anonKey compat
+  }
   AdsService.instance.initialize();
-  // Seedea taxonomía de tags/aliases en la BD local (idempotente, no
-  // reescribe si ya existen). No bloquea el arranque: la búsqueda solo
-  // la necesita cuando el usuario abre esa pestaña.
-  unawaited(
-    DatabaseInitializationService(AppDatabase()).initialize(),
-  );
   runApp(const WallpaperApp());
 }
 
@@ -36,21 +27,15 @@ class WallpaperApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => FavoritesController()),
-        ChangeNotifierProvider(create: (_) => OrientationPreferenceController()),
-        ChangeNotifierProvider(create: (_) => QualitySettingsController()),
-      ],
+    return ChangeNotifierProvider(
+      create: (_) => FavoritesController(),
       child: MaterialApp(
         title: 'Fondos HD',
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
           useMaterial3: true,
         ),
-        home: SplashScreen(
-          nextScreen: const _StartupGate(),
-        ),
+        home: const _StartupGate(),
       ),
     );
   }
@@ -86,11 +71,8 @@ class _StartupGateState extends State<_StartupGate> {
     }
     if (_onboardingComplete == true) {
       return HomeShell(
-        wallpaperService: UnifiedWallpaperService(
-          wallhavenApiKey: wallhavenApiKey,
-          pixabayApiKey: pixabayApiKey,
-          unsplashAccessKey: unsplashAccessKey,
-          giphyApiKey: giphyApiKey,
+        wallpaperService: HybridWallpaperService(
+          wallhavenService: WallhavenWallpaperService(apiKey: wallhavenApiKey),
         ),
       );
     }

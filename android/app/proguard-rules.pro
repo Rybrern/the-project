@@ -10,3 +10,9 @@
 -keep class * extends androidx.room.RoomDatabase
 -keep class androidx.work.impl.WorkDatabase_Impl { <init>(); }
 -dontwarn androidx.room.**
+# Flutter — mantener entry points
+-keep class io.flutter.app.** { *; }
+-keep class io.flutter.plugin.** { *; }
+-keep class io.flutter.view.** { *; }
+# gal / share_plus reflection
+-keep class com.** { *; }

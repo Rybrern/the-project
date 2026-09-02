@@ -1,5 +1,3 @@
-import '../database/daos/wallpaper_resolution_dao.dart';
-
 class Wallpaper {
   const Wallpaper({
     required this.id,
@@ -9,25 +7,16 @@ class Wallpaper {
     required this.category,
     required this.aspectRatio,
     this.forcePortraitCrop = true,
-    // Metadatos de procesamiento (nuevos)
     this.source,
     this.sourceId,
     this.originalUrl,
-    this.fileHash,
-    this.perceptualHash,
-    this.nsfwScore,
-    this.qualityScore,
-    this.primaryCategory,
-    this.subcategory,
     this.tags,
-    this.processedAt,
-    this.processingStatus,
-    this.rejectionReason,
-    // Nuevos campos para búsqueda y carga progresiva
+    this.width,
+    this.height,
+    this.fileSize,
+    this.fileType,
+    this.qualityScore,
     this.previewUrl,
-    this.resolutions,
-    this.searchTokens,
-    this.entityMetadata,
   });
 
   final String id;
@@ -42,29 +31,27 @@ class Wallpaper {
   /// aplicarlo o dejarlo tal cual (categorías tipo "Tablets").
   final bool forcePortraitCrop;
 
-  /// Metadatos de procesamiento y clasificación
-  final String? source; // 'wallhaven' | 'pixabay' | 'custom'
-  final String? sourceId; // ID en la fuente original
-  final String? originalUrl; // URL original
-  final String? fileHash; // SHA256
-  final String? perceptualHash; // pHash para deduplicación
-  final double? nsfwScore; // 0.0 - 1.0
-  final double? qualityScore; // 0.0 - 1.0
-  final String? primaryCategory; // 'deportes', 'naturaleza', etc
-  final String? subcategory; // 'fútbol', 'paisajes', etc
-  final List<String>? tags; // Tags adicionales
-  final DateTime? processedAt;
-  final String? processingStatus; // 'accepted' | 'rejected'
-  final String? rejectionReason;
+  // --- Metadatos de Wallhaven / catálogo manual ---
+  final String? source; // 'wallhaven' | 'manual'
+  final String? sourceId;
+  final String? originalUrl; // https://wallhaven.cc/w/<id>
+  final List<String>? tags; // tags oficiales de Wallhaven
+  final int? width;
+  final int? height;
+  final int? fileSize; // bytes
+  final String? fileType; // 'image/jpeg', 'image/png'
+  final double? qualityScore; // 0.0 - 1.0 basado en resolución
+  final String? previewUrl; // url intermedia entre thumb y full
 
-  /// URL intermedia para carga progresiva (entre thumbnail y fullUrl)
-  final String? previewUrl;
-  /// Múltiples resoluciones almacenadas (thumbnail, preview, original)
-  final List<WallpaperResolution>? resolutions;
-  /// Tokens normalizados para búsqueda rápida
-  final List<String>? searchTokens;
-  /// Metadatos de entidades (jugadores, equipos, etc.)
-  final Map<String, dynamic>? entityMetadata;
+  /// Tokens normalizados para búsqueda local (lowercase, sin duplicados)
+  List<String> get searchTokens {
+    final set = <String>{};
+    for (final t in tags ?? const <String>[]) {
+      set.add(t.toLowerCase().trim());
+    }
+    set.add(category.toLowerCase());
+    return set.where((s) => s.isNotEmpty).toList();
+  }
 
   Wallpaper copyWith({
     String? id,
@@ -77,20 +64,13 @@ class Wallpaper {
     String? source,
     String? sourceId,
     String? originalUrl,
-    String? fileHash,
-    String? perceptualHash,
-    double? nsfwScore,
-    double? qualityScore,
-    String? primaryCategory,
-    String? subcategory,
     List<String>? tags,
-    DateTime? processedAt,
-    String? processingStatus,
-    String? rejectionReason,
+    int? width,
+    int? height,
+    int? fileSize,
+    String? fileType,
+    double? qualityScore,
     String? previewUrl,
-    List<WallpaperResolution>? resolutions,
-    List<String>? searchTokens,
-    Map<String, dynamic>? entityMetadata,
   }) {
     return Wallpaper(
       id: id ?? this.id,
@@ -103,20 +83,13 @@ class Wallpaper {
       source: source ?? this.source,
       sourceId: sourceId ?? this.sourceId,
       originalUrl: originalUrl ?? this.originalUrl,
-      fileHash: fileHash ?? this.fileHash,
-      perceptualHash: perceptualHash ?? this.perceptualHash,
-      nsfwScore: nsfwScore ?? this.nsfwScore,
-      qualityScore: qualityScore ?? this.qualityScore,
-      primaryCategory: primaryCategory ?? this.primaryCategory,
-      subcategory: subcategory ?? this.subcategory,
       tags: tags ?? this.tags,
-      processedAt: processedAt ?? this.processedAt,
-      processingStatus: processingStatus ?? this.processingStatus,
-      rejectionReason: rejectionReason ?? this.rejectionReason,
+      width: width ?? this.width,
+      height: height ?? this.height,
+      fileSize: fileSize ?? this.fileSize,
+      fileType: fileType ?? this.fileType,
+      qualityScore: qualityScore ?? this.qualityScore,
       previewUrl: previewUrl ?? this.previewUrl,
-      resolutions: resolutions ?? this.resolutions,
-      searchTokens: searchTokens ?? this.searchTokens,
-      entityMetadata: entityMetadata ?? this.entityMetadata,
     );
   }
 }

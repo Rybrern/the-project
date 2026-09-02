@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.10+10
+version: 1.0.0+3
 
 environment:
   sdk: ^3.13.1
@@ -38,7 +38,6 @@ dependencies:
   # Networking and image loading/caching for the wallpaper gallery.
   http: ^1.2.2
   cached_network_image: ^3.4.1
-  flutter_cache_manager: ^3.4.2
 
   # State management, layout, and device integrations for the full experience.
   provider: ^6.1.5+1
@@ -52,25 +51,9 @@ dependencies:
   # Monetización (AdMob) y persistencia simple para el onboarding.
   google_mobile_ads: ^9.1.0
   shared_preferences: ^2.3.4
+  supabase_flutter: ^2.17.2
+  # firebase_core migrado a Supabase — mantener solo si usas Firebase AdMob sigue igual
   firebase_core: ^3.15.2
-  cloud_firestore: ^5.6.5
-
-  # Vista previa en loop de fondos animados (Pixabay Video / Giphy).
-  video_player: ^2.9.5
-
-  # Base de datos local para ingesta masiva
-  sqflite: ^2.3.0
-  path: ^1.8.3
-
-  # Logging mejorado
-  logger: ^2.3.0
-
-  # Serialización JSON
-  json_serializable: ^6.7.0
-  json_annotation: ^4.8.1
-
-  # Hash perceptual para deduplicación
-  crypto: ^3.0.3
 
 dev_dependencies:
   flutter_test:
@@ -97,9 +80,13 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
-  # To add assets to your application, add an assets section, like this:
   assets:
-    - lib/database/migrations/
+    - assets/manual_catalog.json
+
+  # To add assets to your application, add an assets section, like this:
+  # assets:
+  #   - images/a_dot_burr.jpeg
+  #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

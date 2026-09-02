@@ -6,7 +6,6 @@ import 'package:http/http.dart' as http;
 
 import '../models/category.dart';
 import '../models/wallpaper.dart';
-import 'utils/timeout_helper.dart';
 import 'wallpaper_service.dart';
 
 /// Catálogo real de fondos de pantalla vía la API de Wallhaven
@@ -21,32 +20,13 @@ class WallhavenWallpaperService implements WallpaperService {
   // 24 es el máximo que permite la API por página.
   static const _wallpapersPerCategory = 24;
 
-  // El purity=100 de Wallhaven ("SFW") no alcanza solo: hay fan art de
-  // personajes (sobre todo en categorías de juegos) que Wallhaven etiqueta
-  // como SFW igual mostrando bastante piel. Estos términos negativos se
-  // agregan a toda búsqueda para bajar ese riesgo — no lo eliminan del todo,
-  // porque dependen de que la imagen esté etiquetada con alguno de estos
-  // tags en Wallhaven.
-  static const _safetyExclusions =
-      '-nsfw -sexy -cleavage -bikini -lingerie -underwear -swimsuit -ecchi '
-      '-ahegao -upskirt -pinup -thighs -boobs -butt -ass -bra -panties';
-
   @override
   Future<List<WallpaperCategory>> fetchCategories() async => kWallpaperCategories;
 
   @override
   Future<List<Wallpaper>> fetchWallpapers() async {
-    try {
-      final results = await TimeoutHelper.withTimeout(
-        Future.wait(kWallpaperCategories.map(_fetchForCategory)),
-        timeout: const Duration(seconds: 60),
-        operation: 'Load all wallpaper categories',
-      );
-      return results.expand((wallpapers) => wallpapers).toList();
-    } catch (e) {
-      debugPrint('WallhavenWallpaperService.fetchWallpapers error: $e');
-      return [];
-    }
+    final results = await Future.wait(kWallpaperCategories.map(_fetchForCategory));
+    return results.expand((wallpapers) => wallpapers).toList();
   }
 
   @override
@@ -56,22 +36,13 @@ class WallhavenWallpaperService implements WallpaperService {
     var remaining = kWallpaperCategories.length;
 
     for (final category in kWallpaperCategories) {
-      _fetchForCategory(category).then(
-        (items) {
-          if (controller.isClosed) return;
-          accumulated.addAll(items);
-          remaining--;
-          controller.add(List.unmodifiable(accumulated));
-          if (remaining == 0) controller.close();
-        },
-        onError: (error) {
-          debugPrint('Error fetching ${category.query}: $error');
-          remaining--;
-          if (!controller.isClosed && remaining == 0) {
-            controller.close();
-          }
-        },
-      );
+      _fetchForCategory(category).then((items) {
+        accumulated.addAll(items);
+        remaining--;
+        if (controller.isClosed) return;
+        controller.add(List.unmodifiable(accumulated));
+        if (remaining == 0) controller.close();
+      });
     }
 
     return controller.stream;
@@ -81,38 +52,82 @@ class WallhavenWallpaperService implements WallpaperService {
   /// tira abajo el resto del catálogo: esa categoría queda vacía y ya está.
   Future<List<Wallpaper>> _fetchForCategory(WallpaperCategory category) async {
     try {
-      final uri = Uri.parse(_baseUrl).replace(queryParameters: {
-        'apikey': apiKey,
-        'q': '${category.query} $_safetyExclusions',
+      final queryParams = <String, String>{
+        'q': category.query,
         'categories': '100', // general only
         'purity': '100', // sfw only
         'sorting': 'random', // catálogo distinto en cada carga
         'per_page': '$_wallpapersPerCategory',
+        'atleast': '1920x1080', // server-side filtro HD mínimo (ahorra ancho de banda)
         if (category.ratios != null) 'ratios': category.ratios!,
-      });
+        if (apiKey.isNotEmpty) 'apikey': apiKey,
+      };
+      final uri = Uri.parse(_baseUrl).replace(queryParameters: queryParams);
 
-      final response = await TimeoutHelper.withTimeout(
-        http.get(uri),
-        timeout: const Duration(seconds: 15),
-        operation: 'Wallhaven category: ${category.query}',
-      );
+      final response = await http
+          .get(uri, headers: {'Accept': 'application/json'})
+          .timeout(const Duration(seconds: 15));
       if (response.statusCode != 200) {
         throw Exception('Wallhaven devolvió ${response.statusCode} para "${category.query}"');
+      }
+      // Validación básica de tamaño para evitar OOM (máx 2MB de JSON)
+      if (response.bodyBytes.length > 2 * 1024 * 1024) {
+        throw Exception('Respuesta Wallhaven demasiado grande');
       }
 
       final body = jsonDecode(response.body) as Map<String, dynamic>;
       final items = (body['data'] as List<dynamic>).cast<Map<String, dynamic>>();
-      return items.map((item) => _mapItem(item, category)).toList();
+      return items
+          .map((item) => _mapItem(item, category))
+          .whereType<Wallpaper>()
+          .toList();
+    } on TimeoutException {
+      debugPrint('WallhavenWallpaperService: timeout para "${category.query}"');
+      return const [];
     } catch (error) {
       debugPrint('WallhavenWallpaperService: falló "${category.query}": $error');
       return const [];
     }
   }
 
-  Wallpaper _mapItem(Map<String, dynamic> item, WallpaperCategory category) {
+  // Filtro de calidad: rechaza fondos que se verán pixelados en pantalla completa.
+  // - Rechaza GIF/animados (baja calidad Giphy, artefactos)
+  // - Rechaza resoluciones < 1080p en lado corto (se verá borroso al estirar)
+  bool _isHighQuality(Map<String, dynamic> item) {
+    final fileType = item['file_type'] as String?;
+    if (fileType != null && fileType.toLowerCase().contains('gif')) return false;
+    final w = item['dimension_x'] as num?;
+    final h = item['dimension_y'] as num?;
+    if (w == null || h == null) return false;
+    final shortSide = w.toDouble() < h.toDouble() ? w.toDouble() : h.toDouble();
+    final longSide = w.toDouble() > h.toDouble() ? w.toDouble() : h.toDouble();
+    // Mínimo HD: lado corto >=1080, largo >=1920 (~2MP). Ajustable via atleast en query.
+    if (shortSide < 1080 || longSide < 1920) return false;
+    // Opcional: filtrar archivos muy pequeños (<300KB suele ser thumbnail upscaleado)
+    final fileSize = item['file_size'] as num?;
+    if (fileSize != null && fileSize < 300 * 1024) return false;
+    return true;
+  }
+
+  double _qualityScore(num w, num h) {
+    final pixels = w.toDouble() * h.toDouble();
+    if (pixels >= 3840 * 2160) return 1.0; // 4K
+    if (pixels >= 2560 * 1440) return 0.9; // QHD
+    if (pixels >= 1920 * 1080) return 0.8; // FHD
+    if (pixels >= 1280 * 720) return 0.5;
+    return 0.2;
+  }
+
+  Wallpaper? _mapItem(Map<String, dynamic> item, WallpaperCategory category) {
+    if (!_isHighQuality(item)) return null;
     final width = (item['dimension_x'] as num).toDouble();
     final height = (item['dimension_y'] as num).toDouble();
     final thumbs = item['thumbs'] as Map<String, dynamic>;
+    // Tags oficiales de Wallhaven
+    final tags = (item['tags'] as List<dynamic>?)
+        ?.map((t) => (t as Map<String, dynamic>)['name'] as String?)
+        .whereType<String>()
+        .toList();
 
     return Wallpaper(
       id: item['id'] as String,
@@ -122,6 +137,16 @@ class WallhavenWallpaperService implements WallpaperService {
       category: category.id,
       aspectRatio: width / height,
       forcePortraitCrop: category.forcePortraitCrop,
+      source: 'wallhaven',
+      sourceId: item['id'] as String,
+      originalUrl: 'https://wallhaven.cc/w/${item['id']}',
+      tags: tags,
+      width: width.toInt(),
+      height: height.toInt(),
+      fileSize: (item['file_size'] as num?)?.toInt(),
+      fileType: item['file_type'] as String?,
+      qualityScore: _qualityScore(width, height),
+      previewUrl: thumbs['large'] as String?,
     );
   }
 }

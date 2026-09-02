@@ -1,8 +1,8 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/wallpaper.dart';
-import '../services/image_loading/robust_image_loader.dart';
 import '../state/favorites_controller.dart';
 
 class WallpaperTile extends StatelessWidget {
@@ -25,16 +25,14 @@ class WallpaperTile extends StatelessWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              RobustImageLoader(
-                thumbnailUrl: wallpaper.thumbnailUrl,
-                previewUrl: wallpaper.previewUrl,
-                fullUrl: wallpaper.fullUrl,
+              CachedNetworkImage(
+                imageUrl: wallpaper.thumbnailUrl,
                 fit: BoxFit.cover,
-                placeholder: const ColoredBox(
+                placeholder: (context, url) => const ColoredBox(
                   color: Color(0xFFE0E0E0),
                   child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
                 ),
-                errorWidget: const ColoredBox(
+                errorWidget: (context, url, error) => const ColoredBox(
                   color: Color(0xFFE0E0E0),
                   child: Icon(Icons.broken_image_outlined),
                 ),
@@ -55,6 +53,35 @@ class WallpaperTile extends StatelessWidget {
                   ),
                 ),
               ),
+              if (wallpaper.source == 'manual')
+                Positioned(
+                  left: 6,
+                  top: 6,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.deepPurple.withValues(alpha: 0.85),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text('Manual', style: TextStyle(color: Colors.white, fontSize: 10)),
+                  ),
+                ),
+              if (wallpaper.qualityScore != null && wallpaper.qualityScore! >= 0.9)
+                Positioned(
+                  left: 6,
+                  bottom: 6,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.55),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      wallpaper.width != null && wallpaper.width! >= 3840 ? '4K' : 'HD',
+                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),

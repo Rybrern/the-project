@@ -1,0 +1,22 @@
+[
+  {
+    "id": "ejemplo_001",
+    "fullUrl": "https://TU_HOST.com/tu-imagen-4k.jpg",
+    "thumbnailUrl": "https://TU_HOST.com/tu-imagen-thumb.jpg",
+    "category": "naturaleza",
+    "author": "Tu Nombre",
+    "tags": ["nature", "4k", "hd"],
+    "width": 3840,
+    "height": 2160
+  },
+  {
+    "id": "ejemplo_002",
+    "fullUrl": "https://images.unsplash.com/photo-1506905925346-21bda4d32df4",
+    "thumbnailUrl": "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400",
+    "category": "abstracto",
+    "author": "Unsplash",
+    "tags": ["abstract", "minimal"],
+    "width": 1920,
+    "height": 1080
+  }
+]
