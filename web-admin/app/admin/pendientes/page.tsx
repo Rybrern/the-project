@@ -15,28 +15,45 @@ export default function Pendientes() {
   const [items, setItems] = useState<PendingWallpaper[] | null>(null);
   const [msg, setMsg] = useState('');
 
+  /// Lee el cuerpo sin asumir que es JSON: un 500 de la plataforma puede
+  /// llegar vacío o como HTML, y un `res.json()` pelado dejaría la UI
+  /// clavada en "Cargando..." escondiendo el error real.
+  async function readError(res: Response): Promise<string> {
+    const text = await res.text().catch(() => '');
+    if (!text) return `El servidor respondió ${res.status} sin detalle.`;
+    try {
+      return JSON.parse(text).error ?? text;
+    } catch {
+      return `El servidor respondió ${res.status}.`;
+    }
+  }
+
   async function load() {
     if (!secret) { setMsg('Falta la contraseña de admin.'); return; }
     setMsg('Cargando...');
-    const res = await fetch('/api/pending', { headers: { 'x-admin-secret': secret } });
-    const body = await res.json();
-    if (!res.ok) { setMsg(`Error: ${body.error}`); return; }
-    setItems(body.items);
-    setMsg(body.items.length === 0 ? 'No hay fondos pendientes.' : '');
+    try {
+      const res = await fetch('/api/pending', { headers: { 'x-admin-secret': secret } });
+      if (!res.ok) { setMsg(`Error: ${await readError(res)}`); return; }
+      const body = await res.json();
+      setItems(body.items);
+      setMsg(body.items.length === 0 ? 'No hay fondos pendientes.' : '');
+    } catch (e) {
+      setMsg(`Error de red: ${e instanceof Error ? e.message : 'no se pudo contactar al servidor.'}`);
+    }
   }
 
   async function moderate(id: string, action: 'approve' | 'reject') {
-    const res = await fetch('/api/moderate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-admin-secret': secret },
-      body: JSON.stringify({ id, action }),
-    });
-    if (!res.ok) {
-      const body = await res.json();
-      setMsg(`Error: ${body.error}`);
-      return;
+    try {
+      const res = await fetch('/api/moderate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-secret': secret },
+        body: JSON.stringify({ id, action }),
+      });
+      if (!res.ok) { setMsg(`Error: ${await readError(res)}`); return; }
+      setItems((prev) => prev?.filter((it) => it.id !== id) ?? null);
+    } catch (e) {
+      setMsg(`Error de red: ${e instanceof Error ? e.message : 'no se pudo contactar al servidor.'}`);
     }
-    setItems((prev) => prev?.filter((it) => it.id !== id) ?? null);
   }
 
   return (

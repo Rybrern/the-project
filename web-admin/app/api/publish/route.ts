@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isAuthorized } from '../../../lib/adminAuth';
-import { supabaseAdmin } from '../../../lib/supabaseAdmin';
+import { MissingEnvError, supabaseAdmin } from '../../../lib/supabaseAdmin';
 
 const ALLOWED_CATEGORIES = new Set([
   'naturaleza', 'abstracto', 'espacio', 'minimalista', 'arquitectura',
@@ -35,19 +35,24 @@ export async function POST(req: NextRequest) {
     : [];
 
   const id = 'manual_' + Date.now();
-  const { error } = await supabaseAdmin().from('wallpapers').insert({
-    id,
-    full_url: url,
-    thumbnail_url: url,
-    category,
-    tags,
-    author: 'Admin Web',
-    source: 'admin',
-    is_published: true,
-  });
+  try {
+    const { error } = await supabaseAdmin().from('wallpapers').insert({
+      id,
+      full_url: url,
+      thumbnail_url: url,
+      category,
+      tags,
+      author: 'Admin Web',
+      source: 'admin',
+      is_published: true,
+    });
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    return NextResponse.json({ ok: true, id });
+  } catch (e) {
+    const msg = e instanceof MissingEnvError ? e.message : 'Error inesperado del servidor.';
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
-  return NextResponse.json({ ok: true, id });
 }

@@ -13,17 +13,32 @@ export default function Admin() {
     if (!url.startsWith('https://')) { setMsg('URL debe ser https://'); return; }
     if (url.toLowerCase().includes('.gif')) { setMsg('GIF no permitido (baja calidad)'); return; }
 
-    const res = await fetch('/api/publish', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-admin-secret': secret },
-      body: JSON.stringify({
-        url,
-        category,
-        tags: tags.split(',').map((s) => s.trim()).filter(Boolean),
-      }),
-    });
-    const body = await res.json();
-    setMsg(res.ok ? `Publicado ${body.id} — visible en la app al reiniciar` : `Error: ${body.error}`);
+    setMsg('Publicando...');
+    try {
+      const res = await fetch('/api/publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-secret': secret },
+        body: JSON.stringify({
+          url,
+          category,
+          tags: tags.split(',').map((s) => s.trim()).filter(Boolean),
+        }),
+      });
+
+      // El cuerpo puede no ser JSON (un 500 de plataforma llega vacío o como
+      // HTML); parsearlo a ciegas dejaría el mensaje clavado en "Publicando...".
+      const text = await res.text().catch(() => '');
+      let parsed: { id?: string; error?: string } = {};
+      try { parsed = text ? JSON.parse(text) : {}; } catch { /* no era JSON */ }
+
+      if (!res.ok) {
+        setMsg(`Error: ${parsed.error ?? `el servidor respondió ${res.status} sin detalle.`}`);
+        return;
+      }
+      setMsg(`Publicado ${parsed.id} — visible en la app al reiniciar`);
+    } catch (e) {
+      setMsg(`Error de red: ${e instanceof Error ? e.message : 'no se pudo contactar al servidor.'}`);
+    }
   }
 
   return (

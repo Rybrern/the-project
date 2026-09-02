@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isAuthorized } from '../../../lib/adminAuth';
-import { supabaseAdmin } from '../../../lib/supabaseAdmin';
+import { MissingEnvError, supabaseAdmin } from '../../../lib/supabaseAdmin';
 
 export async function POST(req: NextRequest) {
   if (!isAuthorized(req)) {
@@ -14,13 +14,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Falta id o action inválida' }, { status: 400 });
   }
 
-  const sb = supabaseAdmin();
-  if (action === 'approve') {
-    const { error } = await sb.from('wallpapers').update({ is_published: true }).eq('id', id);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  } else {
-    const { error } = await sb.from('wallpapers').delete().eq('id', id);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  try {
+    const sb = supabaseAdmin();
+    if (action === 'approve') {
+      const { error } = await sb.from('wallpapers').update({ is_published: true }).eq('id', id);
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    } else {
+      const { error } = await sb.from('wallpapers').delete().eq('id', id);
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    const msg = e instanceof MissingEnvError ? e.message : 'Error inesperado del servidor.';
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
-  return NextResponse.json({ ok: true });
 }
