@@ -48,4 +48,14 @@ app.*.map.json
 .widget_preview/
 
 # Local API keys — never commit real secrets.
+# wallhaven_config.dart contiene la key real; se genera via --dart-define o copia local.
 /lib/config/wallhaven_config.dart
+/lib/config/media_api_config.dart
+# Firebase — restringir keys en consola y no exponer json si el repo es público
+/android/app/google-services.json
+/android/app/google-services-*.json
+/ios/Runner/GoogleService-Info.plist
+/ios/GoogleService-Info.plist
+# Fallback: cualquier *_config.dart con secretos (excepto .example)
+lib/config/*_config.dart
+!lib/config/*.example.dart

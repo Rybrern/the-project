@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:async_wallpaper/async_wallpaper.dart';
@@ -53,9 +54,21 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
         return;
       }
 
-      final response = await http.get(Uri.parse(widget.wallpaper.fullUrl));
+      final response = await http
+          .get(Uri.parse(widget.wallpaper.fullUrl))
+          .timeout(const Duration(seconds: 30));
       if (response.statusCode != 200) {
         _showMessage('No se pudo descargar la imagen.');
+        return;
+      }
+      // Validación de tamaño (máx 25MB) para evitar OOM con imágenes maliciosas
+      if (response.bodyBytes.length > 25 * 1024 * 1024) {
+        _showMessage('Imagen demasiado grande para descargar.');
+        return;
+      }
+      final contentType = response.headers['content-type'] ?? '';
+      if (contentType.isNotEmpty && !contentType.startsWith('image/')) {
+        _showMessage('El archivo no es una imagen válida.');
         return;
       }
 
@@ -64,6 +77,8 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
         name: 'wallpaper_${widget.wallpaper.id}',
       );
       _showMessage('Fondo de pantalla guardado en la galería.');
+    } on TimeoutException {
+      _showMessage('Tiempo agotado al descargar la imagen.');
     } catch (_) {
       _showMessage('No se pudo guardar la imagen.');
     } finally {
@@ -99,9 +114,15 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
       WallpaperRequest request;
 
       if (widget.wallpaper.forcePortraitCrop) {
-        final response = await http.get(Uri.parse(widget.wallpaper.fullUrl));
+        final response = await http
+            .get(Uri.parse(widget.wallpaper.fullUrl))
+            .timeout(const Duration(seconds: 30));
         if (response.statusCode != 200) {
           _showMessage('No se pudo descargar la imagen.');
+          return;
+        }
+        if (response.bodyBytes.length > 25 * 1024 * 1024) {
+          _showMessage('Imagen demasiado grande.');
           return;
         }
 
@@ -139,6 +160,8 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
             ? 'Fondo de pantalla aplicado.'
             : 'No se pudo aplicar el fondo de pantalla.',
       );
+    } on TimeoutException {
+      _showMessage('Tiempo agotado al descargar la imagen.');
     } catch (_) {
       _showMessage('No se pudo aplicar el fondo de pantalla.');
     } finally {

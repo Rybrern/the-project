@@ -30,7 +30,7 @@
 	     https://developers.google.com/admob/ios/test-ads
 	     Reemplazar por el ID real (AdMob > Apps > ID de la app) antes de publicar. -->
 	<key>GADApplicationIdentifier</key>
-	<string>cca-app-pub-8003573930637347~5998796044</string>
+	<string>ca-app-pub-8003573930637347~5998796044</string>
 	<key>NSUserTrackingUsageDescription</key>
 	<string>Usamos este permiso para mostrarte anuncios más relevantes.</string>
 	<key>UIApplicationSceneManifest</key>

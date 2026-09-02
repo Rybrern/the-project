@@ -6,7 +6,10 @@
         android:label="Fondos HD"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
-        android:requestLegacyExternalStorage="true">
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:usesCleartextTraffic="false">
         <!-- ID real de la app en AdMob (AdMob > Apps > ID de la app). -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"

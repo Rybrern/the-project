@@ -8,8 +8,17 @@ import 'package:image/image.dart' as img;
 /// operativo lo recorte de forma arbitraria.
 Uint8List cropToAspectRatio((Uint8List bytes, double targetAspectRatio) args) {
   final (bytes, targetAspectRatio) = args;
+  // Defensa OOM: rechazar imágenes >25MB o con dimensiones absurdas antes de decodificar
+  if (bytes.length > 25 * 1024 * 1024) return bytes;
+  // Validar que targetAspectRatio sea razonable (evitar división por cero / valores extremos)
+  if (!targetAspectRatio.isFinite || targetAspectRatio <= 0.2 || targetAspectRatio > 5) {
+    return bytes;
+  }
   final decoded = img.decodeImage(bytes);
   if (decoded == null) return bytes;
+  // Límite de megapíxeles para evitar OOM en isolate (ej: 50 MP)
+  if (decoded.width * decoded.height > 50 * 1000 * 1000) return bytes;
+  if (decoded.width <= 0 || decoded.height <= 0) return bytes;
 
   final sourceAspectRatio = decoded.width / decoded.height;
 

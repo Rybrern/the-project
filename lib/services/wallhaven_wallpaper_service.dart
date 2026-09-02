@@ -52,24 +52,34 @@ class WallhavenWallpaperService implements WallpaperService {
   /// tira abajo el resto del catálogo: esa categoría queda vacía y ya está.
   Future<List<Wallpaper>> _fetchForCategory(WallpaperCategory category) async {
     try {
-      final uri = Uri.parse(_baseUrl).replace(queryParameters: {
-        'apikey': apiKey,
+      final queryParams = <String, String>{
         'q': category.query,
         'categories': '100', // general only
         'purity': '100', // sfw only
         'sorting': 'random', // catálogo distinto en cada carga
         'per_page': '$_wallpapersPerCategory',
         if (category.ratios != null) 'ratios': category.ratios!,
-      });
+        if (apiKey.isNotEmpty) 'apikey': apiKey,
+      };
+      final uri = Uri.parse(_baseUrl).replace(queryParameters: queryParams);
 
-      final response = await http.get(uri);
+      final response = await http
+          .get(uri, headers: {'Accept': 'application/json'})
+          .timeout(const Duration(seconds: 15));
       if (response.statusCode != 200) {
         throw Exception('Wallhaven devolvió ${response.statusCode} para "${category.query}"');
+      }
+      // Validación básica de tamaño para evitar OOM (máx 2MB de JSON)
+      if (response.bodyBytes.length > 2 * 1024 * 1024) {
+        throw Exception('Respuesta Wallhaven demasiado grande');
       }
 
       final body = jsonDecode(response.body) as Map<String, dynamic>;
       final items = (body['data'] as List<dynamic>).cast<Map<String, dynamic>>();
       return items.map((item) => _mapItem(item, category)).toList();
+    } on TimeoutException {
+      debugPrint('WallhavenWallpaperService: timeout para "${category.query}"');
+      return const [];
     } catch (error) {
       debugPrint('WallhavenWallpaperService: falló "${category.query}": $error');
       return const [];
