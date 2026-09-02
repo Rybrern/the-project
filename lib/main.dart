@@ -12,11 +12,11 @@ import 'services/hybrid_wallpaper_service.dart';
 import 'services/wallhaven_wallpaper_service.dart';
 import 'state/favorites_controller.dart';
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   if (isSupabaseConfigured) {
     await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
-    // ignore: deprecated_member_use - anonKey compat con supabase_flutter 2.10
+    // ignore: deprecated_member_use - anonKey compat
   }
   AdsService.instance.initialize();
   runApp(const WallpaperApp());

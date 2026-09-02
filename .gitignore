@@ -59,3 +59,5 @@ app.*.map.json
 # Fallback: cualquier *_config.dart con secretos (excepto .example)
 lib/config/*_config.dart
 !lib/config/*.example.dart
+# Supabase publishable key es pública (RLS protege escritura) — se puede commitear
+!lib/config/supabase_config.dart
