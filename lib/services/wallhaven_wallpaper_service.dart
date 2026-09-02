@@ -90,6 +90,49 @@ class WallhavenWallpaperService implements WallpaperService {
     }
   }
 
+  /// Busca por tag/palabra clave libre contra la API de Wallhaven (a
+  /// diferencia de [fetchWallpapers], que solo itera [kWallpaperCategories]).
+  /// A diferencia de [_fetchForCategory], un error acá se relanza en vez de
+  /// devolver `[]`: el usuario está esperando activamente el resultado de
+  /// esta búsqueda puntual, así que la pantalla debe poder mostrar un
+  /// estado de error real en vez de un silencioso "sin resultados".
+  Future<List<Wallpaper>> searchByTag(String query, {int page = 1}) async {
+    final searchCategory = WallpaperCategory(
+      id: 'busqueda',
+      name: 'Búsqueda',
+      emoji: '🔍',
+      query: query,
+    );
+    final queryParams = <String, String>{
+      'q': query,
+      'categories': '100',
+      'purity': '100',
+      'sorting': 'relevance',
+      'per_page': '$_wallpapersPerCategory',
+      'page': '$page',
+      'atleast': '1920x1080',
+      if (apiKey.isNotEmpty) 'apikey': apiKey,
+    };
+    final uri = Uri.parse(_baseUrl).replace(queryParameters: queryParams);
+
+    final response = await http
+        .get(uri, headers: {'Accept': 'application/json'})
+        .timeout(const Duration(seconds: 15));
+    if (response.statusCode != 200) {
+      throw Exception('Wallhaven devolvió ${response.statusCode} para "$query"');
+    }
+    if (response.bodyBytes.length > 2 * 1024 * 1024) {
+      throw Exception('Respuesta Wallhaven demasiado grande');
+    }
+
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    final items = (body['data'] as List<dynamic>).cast<Map<String, dynamic>>();
+    return items
+        .map((item) => _mapItem(item, searchCategory))
+        .whereType<Wallpaper>()
+        .toList();
+  }
+
   // Filtro de calidad: rechaza fondos que se verán pixelados en pantalla completa.
   // - Rechaza GIF/animados (baja calidad Giphy, artefactos)
   // - Rechaza resoluciones < 1080p en lado corto (se verá borroso al estirar)

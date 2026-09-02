@@ -1,0 +1,7 @@
+# Nunca commitear la service_role key ni las variables de entorno reales.
+.env
+.env*.local
+node_modules/
+.next/
+.vercel/
+*.tsbuildinfo

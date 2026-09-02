@@ -1,38 +1,37 @@
 'use client';
 import { useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 export default function Admin() {
+  const [secret, setSecret] = useState('');
   const [url, setUrl] = useState('');
   const [category, setCategory] = useState('naturaleza');
   const [tags, setTags] = useState('nature,4k');
   const [msg, setMsg] = useState('');
 
   async function publish() {
+    if (!secret) { setMsg('Falta la contraseña de admin.'); return; }
     if (!url.startsWith('https://')) { setMsg('URL debe ser https://'); return; }
     if (url.toLowerCase().includes('.gif')) { setMsg('GIF no permitido (baja calidad)'); return; }
-    const id = 'manual_' + Date.now();
-    const { error } = await supabase.from('wallpapers').insert({
-      id,
-      full_url: url,
-      thumbnail_url: url,
-      category,
-      tags: tags.split(',').map(s => s.trim()).filter(Boolean),
-      author: 'Admin Web',
-      is_published: true,
+
+    const res = await fetch('/api/publish', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-secret': secret },
+      body: JSON.stringify({
+        url,
+        category,
+        tags: tags.split(',').map((s) => s.trim()).filter(Boolean),
+      }),
     });
-    setMsg(error ? 'Error: ' + error.message : 'Publicado ' + id + ' — visible en la app al reiniciar');
+    const body = await res.json();
+    setMsg(res.ok ? `Publicado ${body.id} — visible en la app al reiniciar` : `Error: ${body.error}`);
   }
 
   return (
     <main style={{ maxWidth: 640, margin: '40px auto', padding: 24 }}>
       <h1>Admin — Subir fondo</h1>
       <p style={{ opacity: 0.7 }}>Pega link directo https (Supabase Storage, Catbox, Imgur). Se valida calidad ≥1080p en la app.</p>
+      <label>Contraseña de admin<input value={secret} onChange={(e) => setSecret(e.target.value)} type="password" style={{ width: '100%', padding: 8, marginTop: 4 }} /></label>
+      <div style={{ height: 12 }} />
       <label>URL imagen<input value={url} onChange={e => setUrl(e.target.value)} placeholder="https://..." style={{ width: '100%', padding: 8, marginTop: 4 }} /></label>
       <div style={{ display: 'flex', gap: 12, marginTop: 12 }}>
         <label>Categoría<select value={category} onChange={e => setCategory(e.target.value)} style={{ padding: 8 }}><option>naturaleza</option><option>abstracto</option><option>espacio</option><option>minimalista</option><option>arquitectura</option><option>animales</option><option>oscuro</option><option>arte</option></select></label>
@@ -41,6 +40,7 @@ export default function Admin() {
       <button onClick={publish} style={{ marginTop: 16, padding: '10px 20px', background: '#7c3aed', color: '#fff', border: 0, borderRadius: 8, cursor: 'pointer' }}>Publicar sin APK</button>
       {msg && <p style={{ marginTop: 12, background: '#1f1f1f', padding: 10, borderRadius: 8 }}>{msg}</p>}
       <p style={{ marginTop: 24, opacity: 0.5, fontSize: 12 }}>Para subir archivo en vez de link, usa Supabase Dashboard &gt; Storage &gt; wallpapers &gt; Upload, luego copia public URL aquí.</p>
+      <p style={{ marginTop: 24 }}><a href="/admin/pendientes" style={{ color: '#a78bfa' }}>Ver fondos subidos por usuarios (moderación) →</a></p>
     </main>
   );
 }

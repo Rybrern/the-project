@@ -45,3 +45,54 @@ create policy "public can read published"
 -- Vista para app: solo publicados, ordenados por creados
 create or replace view public.published_wallpapers as
   select * from public.wallpapers where is_published = true order by created_at desc;
+
+-- ============================================================
+-- Subida de usuarios + moderación (correr después de lo de arriba)
+-- ============================================================
+
+-- Distingue origen (panel admin vs. subido por un usuario de la app) y
+-- habilita el límite de abuso por dispositivo más abajo.
+alter table public.wallpapers add column if not exists source text not null default 'admin' check (source in ('admin', 'user'));
+alter table public.wallpapers add column if not exists device_id text;
+
+-- Defensa en profundidad a nivel DB — no depender solo de la validación
+-- del cliente (Flutter/Next), que un atacante puede saltarse pegándole
+-- directo a la API de Supabase con la anon key.
+alter table public.wallpapers add constraint wallpapers_full_url_https check (full_url like 'https://%');
+alter table public.wallpapers add constraint wallpapers_thumb_url_https check (thumbnail_url like 'https://%');
+alter table public.wallpapers add constraint wallpapers_tags_len check (array_length(tags, 1) is null or array_length(tags, 1) <= 15);
+
+-- La app (anon key, pública por diseño) solo puede insertar fondos propios
+-- pendientes de moderación — nunca publicados directamente. No hay policy
+-- de update/select/delete para anon: el default-deny de RLS ya impide ver
+-- u operar sobre filas ajenas o no publicadas (la policy de SELECT de
+-- arriba sigue acotada a is_published = true).
+drop policy if exists "anon can submit pending" on public.wallpapers;
+create policy "anon can submit pending"
+  on public.wallpapers for insert
+  to anon
+  with check (is_published = false and source = 'user');
+
+-- Tope de envíos pendientes simultáneos por dispositivo: mitiga spam sin
+-- necesitar un sistema de autenticación de usuarios completo. Una vez que
+-- un admin aprueba o rechaza un pendiente, el cupo se libera solo.
+create or replace function public.enforce_pending_limit() returns trigger as $$
+begin
+  if (select count(*) from public.wallpapers where device_id = new.device_id and is_published = false) >= 5 then
+    raise exception 'Demasiados fondos pendientes de moderación para este dispositivo';
+  end if;
+  return new;
+end;
+$$ language plpgsql security definer;
+
+drop trigger if exists trg_enforce_pending_limit on public.wallpapers;
+create trigger trg_enforce_pending_limit
+  before insert on public.wallpapers
+  for each row when (new.source = 'user')
+  execute function public.enforce_pending_limit();
+
+-- Storage: el bucket 'wallpapers' (ver arriba) necesita una policy propia
+-- para que anon pueda subir archivos, acotada a la subcarpeta de subidas
+-- de usuario (no puede tocar lo que ya subió el admin ni lo de otros
+-- dispositivos). Storage > wallpapers > Policies > New policy > For INSERT:
+--   bucket_id = 'wallpapers' AND (storage.foldername(name))[1] = 'user-submitted'

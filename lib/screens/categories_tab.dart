@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../models/category.dart';
 import '../models/wallpaper.dart';
+import '../state/quality_settings_controller.dart';
+import '../utils/wallpaper_quality_filter.dart';
 import '../widgets/category_card.dart';
 import 'category_wallpapers_screen.dart';
 
@@ -13,6 +16,7 @@ class CategoriesTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final quality = context.watch<QualitySettingsController>().quality;
     return Scaffold(
       appBar: AppBar(title: const Text('Categorías')),
       body: FutureBuilder<List<Object>>(
@@ -26,7 +30,7 @@ class CategoriesTab extends StatelessWidget {
           }
 
           final categories = snapshot.data![0] as List<WallpaperCategory>;
-          final wallpapers = snapshot.data![1] as List<Wallpaper>;
+          final wallpapers = filterByQuality(snapshot.data![1] as List<Wallpaper>, quality);
           final coverByCategory = <String, String>{};
           for (final wallpaper in wallpapers) {
             coverByCategory.putIfAbsent(wallpaper.category, () => wallpaper.thumbnailUrl);

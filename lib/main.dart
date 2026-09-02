@@ -11,6 +11,7 @@ import 'services/ads_service.dart';
 import 'services/hybrid_wallpaper_service.dart';
 import 'services/wallhaven_wallpaper_service.dart';
 import 'state/favorites_controller.dart';
+import 'state/quality_settings_controller.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,8 +28,11 @@ class WallpaperApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => FavoritesController(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => FavoritesController()),
+        ChangeNotifierProvider(create: (_) => QualitySettingsController()),
+      ],
       child: MaterialApp(
         title: 'Fondos HD',
         theme: ThemeData(
@@ -70,10 +74,10 @@ class _StartupGateState extends State<_StartupGate> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     if (_onboardingComplete == true) {
+      final wallhavenService = WallhavenWallpaperService(apiKey: wallhavenApiKey);
       return HomeShell(
-        wallpaperService: HybridWallpaperService(
-          wallhavenService: WallhavenWallpaperService(apiKey: wallhavenApiKey),
-        ),
+        wallpaperService: HybridWallpaperService(wallhavenService: wallhavenService),
+        wallhavenService: wallhavenService,
       );
     }
     return OnboardingScreen(onFinished: () => setState(() => _onboardingComplete = true));

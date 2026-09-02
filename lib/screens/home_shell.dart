@@ -2,16 +2,20 @@ import 'package:flutter/material.dart';
 
 import '../models/category.dart';
 import '../models/wallpaper.dart';
+import '../services/wallhaven_wallpaper_service.dart';
 import '../services/wallpaper_service.dart';
 import '../widgets/banner_ad_widget.dart';
 import 'catalog_tab.dart';
 import 'categories_tab.dart';
 import 'favorites_tab.dart';
+import 'search_tab.dart';
+import 'settings_tab.dart';
 
 class HomeShell extends StatefulWidget {
-  const HomeShell({super.key, required this.wallpaperService});
+  const HomeShell({super.key, required this.wallpaperService, required this.wallhavenService});
 
   final WallpaperService wallpaperService;
+  final WallhavenWallpaperService wallhavenService;
 
   @override
   State<HomeShell> createState() => _HomeShellState();
@@ -39,8 +43,10 @@ class _HomeShellState extends State<HomeShell> {
   Widget build(BuildContext context) {
     final tabs = [
       CatalogTab(wallpapersStream: _wallpapersStream, categoriesFuture: _categoriesFuture),
+      SearchTab(wallhavenService: widget.wallhavenService),
       CategoriesTab(categoriesFuture: _categoriesFuture, wallpapersFuture: _wallpapersFuture),
       FavoritesTab(wallpapersFuture: _wallpapersFuture),
+      const SettingsTab(),
     ];
 
     return Scaffold(
@@ -59,6 +65,11 @@ class _HomeShellState extends State<HomeShell> {
                 label: 'Inicio',
               ),
               NavigationDestination(
+                icon: Icon(Icons.search_outlined),
+                selectedIcon: Icon(Icons.search),
+                label: 'Buscar',
+              ),
+              NavigationDestination(
                 icon: Icon(Icons.category_outlined),
                 selectedIcon: Icon(Icons.category),
                 label: 'Categorías',
@@ -67,6 +78,11 @@ class _HomeShellState extends State<HomeShell> {
                 icon: Icon(Icons.favorite_border),
                 selectedIcon: Icon(Icons.favorite),
                 label: 'Favoritos',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.settings_outlined),
+                selectedIcon: Icon(Icons.settings),
+                label: 'Ajustes',
               ),
             ],
           ),

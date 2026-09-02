@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 
 import '../models/wallpaper.dart';
 import '../state/favorites_controller.dart';
+import '../state/quality_settings_controller.dart';
+import '../utils/wallpaper_quality_filter.dart';
 import '../widgets/wallpaper_tile.dart';
 import 'wallpaper_detail_screen.dart';
 
@@ -15,6 +17,7 @@ class FavoritesTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final favoriteIds = context.watch<FavoritesController>().favoriteIds;
+    final quality = context.watch<QualitySettingsController>().quality;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Favoritos')),
@@ -28,7 +31,10 @@ class FavoritesTab extends StatelessWidget {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final favorites = snapshot.data!.where((w) => favoriteIds.contains(w.id)).toList();
+          final favorites = filterByQuality(
+            snapshot.data!.where((w) => favoriteIds.contains(w.id)).toList(),
+            quality,
+          );
           if (favorites.isEmpty) {
             return Center(
               child: Padding(

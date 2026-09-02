@@ -1,20 +1,17 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:async_wallpaper/async_wallpaper.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:gal/gal.dart';
 import 'package:http/http.dart' as http;
-import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../models/wallpaper.dart';
 import '../services/ads_service.dart';
 import '../state/favorites_controller.dart';
-import '../utils/wallpaper_image_processor.dart';
+import '../widgets/pannable_wallpaper_preview.dart';
+import 'wallpaper_crop_screen.dart';
 
 class WallpaperDetailScreen extends StatefulWidget {
   const WallpaperDetailScreen({super.key, required this.wallpaper});
@@ -42,7 +39,10 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
           _showMessage('Mirá el anuncio completo para descargar el fondo.');
           return;
         }
-        _adShownThisVisit = true;
+        // No se marca `_adShownThisVisit` acá todavía: si algo falla más
+        // abajo (sin permiso, sin red, etc.) el usuario no debe quedarse
+        // con un "pase gratis" para descargar/aplicar sin ver otro
+        // anuncio — la recompensa solo cuenta si la acción se completa.
       }
 
       var hasAccess = await Gal.hasAccess();
@@ -76,6 +76,7 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
         response.bodyBytes,
         name: 'wallpaper_${widget.wallpaper.id}',
       );
+      _adShownThisVisit = true;
       _showMessage('Fondo de pantalla guardado en la galería.');
     } on TimeoutException {
       _showMessage('Tiempo agotado al descargar la imagen.');
@@ -95,11 +96,6 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
   }
 
   Future<void> _applyWallpaper(WallpaperTarget target) async {
-    // Se captura antes del primer await: no se puede usar `context` después
-    // de un gap asíncrono si el widget llegó a desmontarse.
-    final screenSize = MediaQuery.sizeOf(context);
-    final targetAspectRatio = screenSize.width / screenSize.height;
-
     setState(() => _isApplying = true);
     try {
       if (!_adShownThisVisit) {
@@ -108,62 +104,23 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
           _showMessage('Mirá el anuncio completo para aplicar el fondo.');
           return;
         }
-        _adShownThisVisit = true;
+        // Igual que en _download: no se marca hasta que el fondo se haya
+        // aplicado de verdad, para que abandonar el editor de recorte a
+        // mitad de camino no deje un "pase gratis" para el próximo intento.
       }
 
-      WallpaperRequest request;
-
-      if (widget.wallpaper.forcePortraitCrop) {
-        final response = await http
-            .get(Uri.parse(widget.wallpaper.fullUrl))
-            .timeout(const Duration(seconds: 30));
-        if (response.statusCode != 200) {
-          _showMessage('No se pudo descargar la imagen.');
-          return;
-        }
-        if (response.bodyBytes.length > 25 * 1024 * 1024) {
-          _showMessage('Imagen demasiado grande.');
-          return;
-        }
-
-        // Recorta al centro para que coincida con la proporción de la
-        // pantalla del teléfono, incluso si el fondo original es horizontal.
-        final cropped = await compute(cropToAspectRatio, (
-          response.bodyBytes,
-          targetAspectRatio,
-        ));
-
-        final tempDir = await getTemporaryDirectory();
-        final file = File(
-          '${tempDir.path}/wallpaper_${widget.wallpaper.id}.jpg',
-        );
-        await file.writeAsBytes(cropped);
-
-        request = WallpaperRequest(
-          target: target,
-          sourceType: WallpaperSourceType.file,
-          source: file.path,
-        );
-      } else {
-        // Fondos pensados para tablets/pantallas horizontales: se aplican
-        // tal cual, sin forzar un recorte vertical que arruinaría el encuadre.
-        request = WallpaperRequest(
-          target: target,
-          sourceType: WallpaperSourceType.url,
-          source: widget.wallpaper.fullUrl,
-        );
-      }
-
-      final result = await AsyncWallpaper.setWallpaper(request);
+      if (!mounted) return;
+      final applied = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          builder: (_) => WallpaperCropScreen(wallpaper: widget.wallpaper, target: target),
+        ),
+      );
+      if (applied == true) _adShownThisVisit = true;
       _showMessage(
-        result.isSuccess
+        applied == true
             ? 'Fondo de pantalla aplicado.'
             : 'No se pudo aplicar el fondo de pantalla.',
       );
-    } on TimeoutException {
-      _showMessage('Tiempo agotado al descargar la imagen.');
-    } catch (_) {
-      _showMessage('No se pudo aplicar el fondo de pantalla.');
     } finally {
       if (mounted) setState(() => _isApplying = false);
     }
@@ -228,9 +185,9 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          CachedNetworkImage(
+          PannableWallpaperPreview(
             imageUrl: widget.wallpaper.fullUrl,
-            fit: BoxFit.cover,
+            aspectRatio: widget.wallpaper.aspectRatio,
           ),
           Positioned(
             left: 0,

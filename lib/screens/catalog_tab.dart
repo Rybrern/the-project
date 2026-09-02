@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+import 'package:provider/provider.dart';
 
 import '../models/category.dart';
 import '../models/wallpaper.dart';
+import '../state/quality_settings_controller.dart';
+import '../utils/wallpaper_quality_filter.dart';
 import '../widgets/category_chip.dart';
 import '../widgets/wallpaper_tile.dart';
 import 'wallpaper_detail_screen.dart';
@@ -22,6 +25,7 @@ class _CatalogTabState extends State<CatalogTab> {
 
   @override
   Widget build(BuildContext context) {
+    final quality = context.watch<QualitySettingsController>().quality;
     return Scaffold(
       appBar: AppBar(title: const Text('Fondos de pantalla')),
       body: FutureBuilder<List<WallpaperCategory>>(
@@ -59,16 +63,17 @@ class _CatalogTabState extends State<CatalogTab> {
                 child: StreamBuilder<List<Wallpaper>>(
                   stream: widget.wallpapersStream,
                   builder: (context, snapshot) {
-                    final wallpapers = snapshot.data ?? const [];
+                    final rawWallpapers = snapshot.data ?? const [];
                     final stillLoading = snapshot.connectionState != ConnectionState.done;
 
-                    if (wallpapers.isEmpty) {
+                    if (rawWallpapers.isEmpty) {
                       if (snapshot.hasError) {
                         return Center(child: Text('Error: ${snapshot.error}'));
                       }
                       return const Center(child: CircularProgressIndicator());
                     }
 
+                    final wallpapers = filterByQuality(rawWallpapers, quality);
                     final filtered = _selectedCategoryId == null
                         ? wallpapers
                         : wallpapers.where((w) => w.category == _selectedCategoryId).toList();
