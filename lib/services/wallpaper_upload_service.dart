@@ -2,7 +2,6 @@ import 'dart:math';
 
 import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/supabase_config.dart';
@@ -23,7 +22,6 @@ class WallpaperUploadException implements Exception {
 /// `"anon can submit pending"` (ver `supabase/schema.sql`): solo puede
 /// insertar filas propias no publicadas.
 class WallpaperUploadService {
-  static const _deviceIdPrefsKey = 'device_id';
   static const _minShortSide = 1080;
   static const _minLongSide = 1920;
 
@@ -31,6 +29,32 @@ class WallpaperUploadService {
 
   Future<XFile?> pickImage() {
     return _picker.pickImage(source: ImageSource.gallery, imageQuality: 95);
+  }
+
+  /// Devuelve el id de usuario emitido por Supabase, creando una sesión
+  /// anónima la primera vez. `supabase_flutter` persiste la sesión, así que
+  /// el mismo dispositivo conserva su id entre reinicios.
+  ///
+  /// Reemplaza al identificador que antes generaba el propio cliente: ese
+  /// viajaba en el cuerpo del request y podía inventarse en cada envío,
+  /// dejando inútil el tope de pendientes. Este viene firmado dentro del JWT.
+  Future<String> _requireUserId() async {
+    final auth = Supabase.instance.client.auth;
+    final existing = auth.currentSession?.user.id;
+    if (existing != null) return existing;
+
+    try {
+      final res = await auth.signInAnonymously();
+      final id = res.user?.id;
+      if (id == null) throw WallpaperUploadException('No se pudo iniciar la sesión.');
+      return id;
+    } on AuthException catch (e) {
+      throw WallpaperUploadException(
+        e.message.toLowerCase().contains('disabled')
+            ? 'La subida no está habilitada en este momento.'
+            : 'No se pudo iniciar la sesión para subir el fondo.',
+      );
+    }
   }
 
   Future<void> submit({
@@ -59,9 +83,11 @@ class WallpaperUploadService {
       );
     }
 
-    final deviceId = await _getOrCreateDeviceId();
+    final userId = await _requireUserId();
     final id = _generateId('user');
-    final storagePath = 'user-submitted/$deviceId/$id.jpg';
+    // La carpeta debe ser exactamente auth.uid(): la policy de Storage
+    // compara el segundo segmento de la ruta contra el id del JWT.
+    final storagePath = 'user-submitted/$userId/$id.jpg';
 
     final storage = Supabase.instance.client.storage.from('wallpapers');
     try {
@@ -84,7 +110,7 @@ class WallpaperUploadService {
         'tags': tags,
         'author': 'Usuario',
         'source': 'user',
-        'device_id': deviceId,
+        'device_id': userId,
         'is_published': false,
         'width': decoded.width,
         'height': decoded.height,
@@ -101,15 +127,6 @@ class WallpaperUploadService {
     } catch (_) {
       throw WallpaperUploadException('No se pudo enviar el fondo a moderación.');
     }
-  }
-
-  Future<String> _getOrCreateDeviceId() async {
-    final prefs = await SharedPreferences.getInstance();
-    final existing = prefs.getString(_deviceIdPrefsKey);
-    if (existing != null) return existing;
-    final generated = _generateId('device');
-    await prefs.setString(_deviceIdPrefsKey, generated);
-    return generated;
   }
 
   /// Id único no-criptográfico — mismo nivel de unicidad que ya usa

@@ -62,16 +62,28 @@ alter table public.wallpapers add constraint wallpapers_full_url_https check (fu
 alter table public.wallpapers add constraint wallpapers_thumb_url_https check (thumbnail_url like 'https://%');
 alter table public.wallpapers add constraint wallpapers_tags_len check (array_length(tags, 1) is null or array_length(tags, 1) <= 15);
 
--- La app (anon key, pública por diseño) solo puede insertar fondos propios
--- pendientes de moderación — nunca publicados directamente. No hay policy
--- de update/select/delete para anon: el default-deny de RLS ya impide ver
--- u operar sobre filas ajenas o no publicadas (la policy de SELECT de
--- arriba sigue acotada a is_published = true).
+-- La app solo puede insertar fondos propios pendientes de moderación, nunca
+-- publicados directamente. No hay policy de update/select/delete: el
+-- default-deny de RLS ya impide ver u operar sobre filas ajenas o no
+-- publicadas (la policy de SELECT de arriba sigue acotada a is_published).
+--
+-- Requiere sesión anónima de Supabase Auth (Dashboard > Authentication >
+-- Sign In / Providers > Anonymous sign-ins). El insert va contra el rol
+-- 'authenticated', no 'anon', y `device_id` queda atado a `auth.uid()`:
+-- el identificador lo emite el servidor dentro del JWT, así que el cliente
+-- ya no puede inventarlo. Sin eso, bastaba con mandar un device_id nuevo en
+-- cada request para saltarse el tope de pendientes de más abajo (auditoría
+-- 2026-09-02: se demostró insertando 3 filas seguidas con ids inventados).
 drop policy if exists "anon can submit pending" on public.wallpapers;
-create policy "anon can submit pending"
+drop policy if exists "authenticated can submit pending" on public.wallpapers;
+create policy "authenticated can submit pending"
   on public.wallpapers for insert
-  to anon
-  with check (is_published = false and source = 'user');
+  to authenticated
+  with check (
+    is_published = false
+    and source = 'user'
+    and device_id = auth.uid()::text
+  );
 
 -- Tope de envíos pendientes simultáneos por dispositivo: mitiga spam sin
 -- necesitar un sistema de autenticación de usuarios completo. Una vez que
@@ -91,8 +103,23 @@ create trigger trg_enforce_pending_limit
   for each row when (new.source = 'user')
   execute function public.enforce_pending_limit();
 
--- Storage: el bucket 'wallpapers' (ver arriba) necesita una policy propia
--- para que anon pueda subir archivos, acotada a la subcarpeta de subidas
--- de usuario (no puede tocar lo que ya subió el admin ni lo de otros
--- dispositivos). Storage > wallpapers > Policies > New policy > For INSERT:
---   bucket_id = 'wallpapers' AND (storage.foldername(name))[1] = 'user-submitted'
+-- Storage: el bucket 'wallpapers' necesita su propia policy (las policies de
+-- Storage viven en storage.objects, NO en esta tabla). Acota la escritura a
+-- la carpeta del propio usuario: user-submitted/<auth.uid()>/archivo.jpg.
+-- Sin el segundo segmento atado a auth.uid(), cualquiera con la clave
+-- pública podía escribir en carpetas arbitrarias (auditoría 2026-09-02).
+drop policy if exists "anon can upload user-submitted" on storage.objects;
+drop policy if exists "authenticated can upload own folder" on storage.objects;
+create policy "authenticated can upload own folder"
+  on storage.objects for insert
+  to authenticated
+  with check (
+    bucket_id = 'wallpapers'
+    and (storage.foldername(name))[1] = 'user-submitted'
+    and (storage.foldername(name))[2] = auth.uid()::text
+  );
+
+-- Complemento fuera de SQL (Dashboard > Storage > wallpapers > Settings),
+-- ya aplicado por API el 2026-09-02: límite de 25MB por archivo y MIME types
+-- restringidos a image/jpeg, image/png, image/webp. Sin eso el bucket
+-- aceptaba archivos de cualquier tipo y tamaño.

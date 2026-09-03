@@ -1,4 +1,5 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { isRateLimited, recordFailure, recordSuccess } from './rateLimit';
 
 /// Compara con timing constante para no filtrar el secreto por diferencias
 /// de tiempo de respuesta (comparación ingenua de strings es vulnerable a
@@ -17,4 +18,22 @@ export function isAuthorized(req: NextRequest): boolean {
   if (!expected) return false; // Sin secreto configurado, denegar todo.
   const provided = req.headers.get('x-admin-secret') ?? '';
   return timingSafeEqual(provided, expected);
+}
+
+/// Gate único de los endpoints admin: devuelve la respuesta de rechazo, o
+/// `null` si el pedido puede continuar. Combina el chequeo del secreto con
+/// el rate limit para que un bucle de fuerza bruta se corte solo.
+export function denyAdmin(req: NextRequest): NextResponse | null {
+  if (isRateLimited(req)) {
+    return NextResponse.json(
+      { error: 'Demasiados intentos fallidos. Esperá un minuto.' },
+      { status: 429 }
+    );
+  }
+  if (!isAuthorized(req)) {
+    recordFailure(req);
+    return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+  }
+  recordSuccess(req);
+  return null;
 }

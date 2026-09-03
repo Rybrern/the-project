@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isAuthorized } from '../../../lib/adminAuth';
+import { denyAdmin } from '../../../lib/adminAuth';
 import { MissingEnvError, supabaseAdmin } from '../../../lib/supabaseAdmin';
 
 export async function POST(req: NextRequest) {
-  if (!isAuthorized(req)) {
-    return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
-  }
+  const denied = denyAdmin(req);
+  if (denied) return denied;
 
   const body = await req.json().catch(() => null);
   const id: string | undefined = body?.id;
