@@ -20,6 +20,15 @@ class WallhavenWallpaperService implements WallpaperService {
   // 24 es el máximo que permite la API por página.
   static const _wallpapersPerCategory = 24;
 
+  /// Resolución mínima exigida a la API, orientada según la categoría.
+  ///
+  /// `atleast` compara ancho y alto por separado, así que el valor tiene que
+  /// seguir la orientación buscada: pedir `1920x1080` en una categoría
+  /// vertical descarta un fondo de 1080x1920 por "poco ancho", que es
+  /// justamente la forma de pantalla que queremos.
+  String _minResolutionFor(WallpaperCategory category) =>
+      category.forcePortraitCrop ? '1080x1920' : '1920x1080';
+
   @override
   Future<List<WallpaperCategory>> fetchCategories() async => kWallpaperCategories;
 
@@ -58,7 +67,8 @@ class WallhavenWallpaperService implements WallpaperService {
         'purity': '100', // sfw only
         'sorting': 'random', // catálogo distinto en cada carga
         'per_page': '$_wallpapersPerCategory',
-        'atleast': '1920x1080', // server-side filtro HD mínimo (ahorra ancho de banda)
+        // server-side filtro HD mínimo (ahorra ancho de banda)
+        'atleast': _minResolutionFor(category),
         if (category.ratios != null) 'ratios': category.ratios!,
         if (apiKey.isNotEmpty) 'apikey': apiKey,
       };
@@ -110,7 +120,11 @@ class WallhavenWallpaperService implements WallpaperService {
       'sorting': 'relevance',
       'per_page': '$_wallpapersPerCategory',
       'page': '$page',
-      'atleast': '1920x1080',
+      // Piso neutro respecto de la orientación: pedir 1920x1080 acá dejaba
+      // fuera cualquier resultado vertical, aunque el usuario busque justo
+      // eso. El mínimo real (lado corto >=1080, largo >=1920) lo aplica
+      // _isHighQuality, que sí es agnóstico a la orientación.
+      'atleast': '1080x1080',
       if (apiKey.isNotEmpty) 'apikey': apiKey,
     };
     final uri = Uri.parse(_baseUrl).replace(queryParameters: queryParams);

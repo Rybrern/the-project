@@ -15,15 +15,25 @@ abstract class WallpaperService {
   Future<List<WallpaperCategory>> fetchCategories();
 }
 
+/// Proporciones de pantalla de teléfono, en el formato que espera el
+/// parámetro `ratios` de Wallhaven. Cubre desde el 16:9 clásico hasta los
+/// paneles alargados actuales (21:9).
+///
+/// Sin este filtro la API devuelve casi puro fondo de escritorio 16:9: la
+/// búsqueda "nature" sin `ratios` da resultados de 6000x3596 y 3840x2160,
+/// que solo llegan a la pantalla del teléfono recortados y perdiendo
+/// composición. Con el filtro hay ~349 fondos por categoría ya verticales.
+const kPhoneRatios = '9x16,10x16,9x18,9x19,9x20,9x21';
+
 const kWallpaperCategories = [
-  WallpaperCategory(id: 'naturaleza', name: 'Naturaleza', emoji: '🌿', query: 'nature'),
-  WallpaperCategory(id: 'abstracto', name: 'Abstracto', emoji: '🎨', query: 'abstract'),
-  WallpaperCategory(id: 'espacio', name: 'Espacio', emoji: '🌌', query: 'space'),
-  WallpaperCategory(id: 'minimalista', name: 'Minimalista', emoji: '⬛', query: 'minimal'),
-  WallpaperCategory(id: 'arquitectura', name: 'Arquitectura', emoji: '🏙️', query: 'architecture'),
-  WallpaperCategory(id: 'animales', name: 'Animales', emoji: '🐾', query: 'animals'),
-  WallpaperCategory(id: 'oscuro', name: 'Oscuro', emoji: '🌑', query: 'dark'),
-  WallpaperCategory(id: 'arte', name: 'Arte', emoji: '🖼️', query: 'art'),
+  WallpaperCategory(id: 'naturaleza', name: 'Naturaleza', emoji: '🌿', query: 'nature', ratios: kPhoneRatios),
+  WallpaperCategory(id: 'abstracto', name: 'Abstracto', emoji: '🎨', query: 'abstract', ratios: kPhoneRatios),
+  WallpaperCategory(id: 'espacio', name: 'Espacio', emoji: '🌌', query: 'space', ratios: kPhoneRatios),
+  WallpaperCategory(id: 'minimalista', name: 'Minimalista', emoji: '⬛', query: 'minimal', ratios: kPhoneRatios),
+  WallpaperCategory(id: 'arquitectura', name: 'Arquitectura', emoji: '🏙️', query: 'architecture', ratios: kPhoneRatios),
+  WallpaperCategory(id: 'animales', name: 'Animales', emoji: '🐾', query: 'animals', ratios: kPhoneRatios),
+  WallpaperCategory(id: 'oscuro', name: 'Oscuro', emoji: '🌑', query: 'dark', ratios: kPhoneRatios),
+  WallpaperCategory(id: 'arte', name: 'Arte', emoji: '🖼️', query: 'art', ratios: kPhoneRatios),
   WallpaperCategory(
     id: 'tablets',
     name: 'Tablets',
