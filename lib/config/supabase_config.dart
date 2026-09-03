@@ -6,7 +6,7 @@ const supabaseUrl = String.fromEnvironment(
 );
 const supabaseAnonKey = String.fromEnvironment(
   'SUPABASE_ANON_KEY',
-  defaultValue: 'sb_publishable_G0pTHMLYcL2tEgPm_PneIg_WBaw2rpt',
+  defaultValue: 'sb_publishable_j52Rx2umCK6oCtFJcI-iCA_RnHDT3GX',
 );
 
 bool get isSupabaseConfigured => supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty;
